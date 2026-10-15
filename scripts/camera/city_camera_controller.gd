@@ -1,7 +1,7 @@
 extends Node
 
 ## Touch and mouse camera gestures for the city view.
-@export var min_zoom: float = 0.28
+@export var min_zoom: float = 0.12
 @export var max_zoom: float = 1.15
 @export var zoom_step: float = 1.12
 

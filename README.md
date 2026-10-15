@@ -4,11 +4,27 @@ A landscape-first Godot 4 mobile game prototype. The project is being built in t
 
 ## Run the prototype
 
-1. Open this folder in **Godot 4.3 or newer** (`project.godot`).
+1. Open this folder in **Godot 4.4 or newer** (`project.godot`).
 2. Run the project (F6/F5, or the Run button).
-3. On a touchscreen, drag with one finger to pan and pinch with two fingers to zoom. On desktop, drag with the left mouse button and use the mouse wheel to zoom.
+3. Choose a map size at the start. Tap **New City** in the top-right HUD to choose another size at any time.
+4. On a touchscreen, drag with one finger to pan and pinch with two fingers to zoom. On desktop, drag with the left mouse button and use the mouse wheel to zoom.
 
-The city is generated from placeholder 64×64 pixel-style source tiles and a fixed seed, so it is repeatable between launches. The ground is projected as a classic 2:1 isometric diamond; the tile colors and procedural shapes are deliberately easy to replace with a tileset later.
+The city is a new procedural, pixel-art-style interpretation of a Manhattan-like island: a dense orthogonal street grid, wider avenues, a bending Broadway, Central Park with a lake and paths, waterfront promenades, bridges, and a few civic landmarks. Blocks contain varied low-rise and high-rise buildings, trees, pedestrians, cars, taxis, buses, and delivery vans. This is **TheoTown-inspired in spirit only**: no TheoTown graphics, save files, or proprietary assets are used.
+
+### Selectable map sizes
+
+| Option | Grid | Maximum block slots |
+| --- | ---: | ---: |
+| District | 5 × 12 blocks | 60 |
+| Borough | 7 × 16 blocks | 112 |
+| Large City | 9 × 24 blocks | 216 |
+| Megacity | 11 × 30 blocks | 330 |
+
+The shoreline and park leave some slots as water or green space, so the number of built city blocks is lower than the maximum. The default selection is **Large City**.
+
+## Map reference and attribution
+
+The layout reference is **“Manhattan NYC OpenStreetMap 2023-08-21.png” by OpenStreetMap**, published under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) via [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Manhattan_NYC_OpenStreetMap_2023-08-21.png). The underlying OpenStreetMap data is made available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/1-0/). The project adapts the broad island outline and street-plan ideas into an original fictional, playable isometric map; it does not include the reference image or import a TheoTown map/save.
 
 ## Android / phone testing
 
@@ -16,9 +32,9 @@ The project viewport is landscape-first and uses the GL Compatibility renderer f
 
 ## Step 1 acceptance check
 
-- Project opens directly into the generated isometric city.
-- Streets, sidewalks, city blocks, buildings, and trees are visible.
-- Citizens walk around sidewalks and cars circulate on the roads.
+- Project opens to a map-size selection screen; **New City** opens it again while playing.
+- Each size generates a larger/smaller island map with its own coastline, Manhattan-style avenues and cross streets, Broadway-like diagonal, Central Park and bridges.
+- Dense city blocks include varied buildings, rooftop details, trees, landmarks, pedestrians, and several vehicle types.
 - One-finger drag pans; two-finger pinch zooms. Desktop mouse controls are also available.
 - The scene remains landscape on Android.
 
@@ -28,7 +44,7 @@ If Godot is installed, run the lightweight generation smoke test with:
 godot --headless --path . --script res://tests/city_smoke_test.gd
 ```
 
-The same GitHub Actions workflow runs this smoke test and builds the Android APK on pushes, pull requests, or manual dispatch. It checks project initialization and city generation; it does not replace touch testing on a real Android phone.
+The same GitHub Actions workflow runs this smoke test and builds the Android APK on pushes, pull requests, or manual dispatch. It checks project initialization and more than one map size; it does not replace touch testing on a real Android phone.
 
 ## Planned gameplay rule: powers must have real behavior
 

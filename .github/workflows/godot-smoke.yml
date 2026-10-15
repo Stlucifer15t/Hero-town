@@ -91,7 +91,16 @@ jobs:
       - name: Export debug APK
         run: |
           mkdir -p build/android
-          "$GODOT_BIN" --headless --path . --export-debug "Android" build/android/hero_town_debug.apk
+          set +e
+          "$GODOT_BIN" --headless --verbose --path . --export-debug "Android" build/android/hero_town_debug.apk > /tmp/godot-export.log 2>&1
+          export_status=$?
+          cat /tmp/godot-export.log
+          if [ "$export_status" -ne 0 ]; then
+            while IFS= read -r line; do
+              echo "::error title=Godot Android export::$line"
+            done < <(tail -n 40 /tmp/godot-export.log)
+            exit "$export_status"
+          fi
           test -s build/android/hero_town_debug.apk
 
       - name: Upload Android APK artifact

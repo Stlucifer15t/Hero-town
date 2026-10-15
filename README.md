@@ -26,7 +26,7 @@ The shoreline and parks leave some slots as water or green space, so the number 
 
 ### Art direction and mobile rendering
 
-The starter building atlas contains original townhouse, shop, apartment, and mid-rise art; it is not copied from TheoTown. The closer default camera, quieter tile seams, varied ground textures, and larger walkers are intended to make the neighborhood view more readable. Static buildings share one renderer and texture atlas, the ground remains a `TileMapLayer`, and pedestrians/vehicles pause their movement updates when off-screen. The number of walkers and vehicles is capped to keep the Android update budget bounded. Actual frame pacing still needs confirmation on a phone.
+The starter building atlas contains original townhouse, shop, apartment, and mid-rise art; it is not copied from TheoTown. For this phone-test slice, the richer sprites, varied ground textures, and larger walkers are limited to a centered neighborhood of up to 7 × 8 blocks, framed by the closer default camera. The rest of a large map keeps its earlier procedural look until the user tests this slice. Static buildings share one renderer and texture atlas, the ground remains a `TileMapLayer`, and pedestrians/vehicles pause their movement updates when off-screen. Walker and vehicle counts are capped to keep the Android update budget bounded. Actual frame pacing still needs confirmation on a phone.
 
 ## Android / phone testing
 

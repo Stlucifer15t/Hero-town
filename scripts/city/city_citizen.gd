@@ -11,6 +11,7 @@ var _skin_color: Color = Color("#f1bb8a")
 var _hair_color: Color = Color("#392e35")
 var _walk_phase: float = 0.0
 var _facing: float = 1.0
+var _character_scale: float = 1.0
 
 
 func _ready() -> void:
@@ -38,7 +39,8 @@ func configure(
 	trouser_color: Color,
 	skin_color: Color,
 	hair_color: Color,
-	start_distance: float
+	start_distance: float,
+	neighborhood_art: bool = false
 ) -> void:
 	_route = route
 	_speed = speed
@@ -46,6 +48,7 @@ func configure(
 	_trouser_color = trouser_color
 	_skin_color = skin_color
 	_hair_color = hair_color
+	_character_scale = 1.55 if neighborhood_art else 1.0
 	_distance_on_segment = start_distance
 	_advance(0.0)
 	add_to_group("city_citizens")
@@ -57,6 +60,10 @@ func _process(delta: float) -> void:
 	_walk_phase += delta * 9.0
 	_advance(_speed * delta)
 	queue_redraw()
+
+
+func get_character_scale() -> float:
+	return _character_scale
 
 
 func _advance(distance: float) -> void:
@@ -97,8 +104,14 @@ func _advance(distance: float) -> void:
 
 
 func _draw() -> void:
-	const CHARACTER_SCALE: float = 1.55
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * CHARACTER_SCALE)
+	if _character_scale > 1.0:
+		_draw_neighborhood_pedestrian()
+	else:
+		_draw_original_pedestrian()
+
+
+func _draw_neighborhood_pedestrian() -> void:
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * _character_scale)
 	var bob: float = absf(sin(_walk_phase)) * 1.2
 	var leg_swing: float = sin(_walk_phase) * 2.0
 	var arm_swing: float = cos(_walk_phase) * 1.4
@@ -190,3 +203,35 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2(eye_x, -24.0 + bob), Vector2(1.5, 1.5)), outline)
 	draw_rect(Rect2(Vector2(-3.0, -23.0 + bob), Vector2(2.0, 1.0)), _skin_color.lightened(0.24))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _draw_original_pedestrian() -> void:
+	var bob: float = absf(sin(_walk_phase)) * 1.4
+	var leg_swing: float = sin(_walk_phase) * 2.0
+	var outline: Color = Color("#17232c")
+	draw_colored_polygon(
+		PackedVector2Array(
+			[Vector2(-8.0, 1.0), Vector2(0.0, -2.0), Vector2(8.0, 1.0), Vector2(0.0, 4.0)]
+		),
+		Color(0.06, 0.10, 0.12, 0.35)
+	)
+	draw_rect(Rect2(Vector2(-4.0, -10.0 + bob), Vector2(8.0, 8.0)), outline)
+	draw_rect(Rect2(Vector2(-3.0, -9.0 + bob), Vector2(6.0, 7.0)), _trouser_color)
+	draw_rect(Rect2(Vector2(-3.0 + leg_swing, -3.0 + bob), Vector2(3.0, 6.0)), outline)
+	draw_rect(Rect2(Vector2(1.0 - leg_swing, -3.0 + bob), Vector2(3.0, 6.0)), outline)
+	draw_rect(
+		Rect2(Vector2(-2.0 + leg_swing, -2.0 + bob), Vector2(2.0, 4.0)),
+		_trouser_color.lightened(0.08)
+	)
+	draw_rect(
+		Rect2(Vector2(2.0 - leg_swing, -2.0 + bob), Vector2(2.0, 4.0)),
+		_trouser_color.lightened(0.08)
+	)
+	draw_rect(Rect2(Vector2(-5.0, -19.0 + bob), Vector2(10.0, 11.0)), outline)
+	draw_rect(Rect2(Vector2(-4.0, -18.0 + bob), Vector2(8.0, 9.0)), _shirt_color)
+	draw_rect(Rect2(Vector2(-3.0, -27.0 + bob), Vector2(7.0, 8.0)), outline)
+	draw_rect(Rect2(Vector2(-2.0, -26.0 + bob), Vector2(5.0, 6.0)), _skin_color)
+	draw_rect(Rect2(Vector2(-3.0, -28.0 + bob), Vector2(7.0, 3.0)), _hair_color)
+	var eye_x: float = 1.0 if _facing > 0.0 else -2.0
+	draw_rect(Rect2(Vector2(-3.0, -17.0 + bob), Vector2(2.0, 2.0)), _shirt_color.lightened(0.28))
+	draw_rect(Rect2(Vector2(eye_x, -24.0 + bob), Vector2(1.0, 1.0)), outline)

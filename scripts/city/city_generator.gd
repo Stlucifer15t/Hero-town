@@ -2,6 +2,7 @@ extends Node2D
 
 ## Generates an original isometric island city inspired by TheoTown's Secaton community map.
 const CityPropsRenderer = preload("res://scripts/city/city_props_renderer.gd")
+const CityBuildingProfile = preload("res://scripts/city/city_building_profile.gd")
 const CityCitizen = preload("res://scripts/city/city_citizen.gd")
 const CityCar = preload("res://scripts/city/city_car.gd")
 
@@ -72,6 +73,7 @@ var _blocks_wide: int = 12
 var _blocks_long: int = 18
 var _map_width: int = 97
 var _map_height: int = 145
+var _visual_neighborhood_rect: Rect2i = Rect2i()
 var _coast_left: Array[int] = []
 var _coast_right: Array[int] = []
 var _park_rect: Rect2i = Rect2i()
@@ -101,6 +103,13 @@ func generate(seed_value: int, preset_index: int = 2) -> void:
 	_blocks_long = int(preset["blocks_long"])
 	_map_width = _blocks_wide * ROAD_SPACING + 1
 	_map_height = _blocks_long * ROAD_SPACING + 1
+	var neighborhood_size := Vector2i(
+		mini(_blocks_wide, 7) * ROAD_SPACING, mini(_blocks_long, 8) * ROAD_SPACING
+	)
+	var neighborhood_origin := Vector2i(
+		int((_map_width - neighborhood_size.x) / 2), int((_map_height - neighborhood_size.y) / 2)
+	)
+	_visual_neighborhood_rect = Rect2i(neighborhood_origin, neighborhood_size)
 	_rng.seed = seed_value
 
 	_build_coastline()
@@ -145,6 +154,10 @@ func get_city_block_count() -> int:
 
 func get_citizen_count() -> int:
 	return _citizen_count
+
+
+func get_visual_neighborhood_bounds() -> Rect2i:
+	return _visual_neighborhood_rect
 
 
 func get_car_count() -> int:
@@ -359,9 +372,12 @@ func _build_ground() -> void:
 
 	for y: int in range(-2, _map_height + 2):
 		for x: int in range(-2, _map_width + 2):
+			var cell := Vector2i(x, y)
 			var base_tile: int = _tile_for_cell(x, y)
-			var art_tile: int = _tile_art_variant(x, y, base_tile)
-			_ground.set_cell(Vector2i(x, y), 0, Vector2i(art_tile, 0))
+			var art_tile: int = base_tile
+			if _visual_neighborhood_rect.has_point(cell):
+				art_tile = _tile_art_variant(x, y, base_tile)
+			_ground.set_cell(cell, 0, Vector2i(art_tile, 0))
 
 	_props = CityPropsRenderer.new()
 	_props.name = "StaticProps"
@@ -374,10 +390,10 @@ func _make_tile_atlas() -> Image:
 	image.fill(Color(0.0, 0.0, 0.0, 0.0))
 
 	_paint_iso_tile(image, TILE_GRASS, Color("#3e805f"), Color("#244c49"), 0)
-	_paint_iso_tile(image, TILE_SIDEWALK, Color("#b1aa93"), Color("#928b78"), 1)
-	_paint_iso_tile(image, TILE_ROAD_X, Color("#35434d"), Color("#2b3941"), 2)
-	_paint_iso_tile(image, TILE_ROAD_Y, Color("#35434d"), Color("#2b3941"), 3)
-	_paint_iso_tile(image, TILE_INTERSECTION, Color("#414d53"), Color("#303d43"), 4)
+	_paint_iso_tile(image, TILE_SIDEWALK, Color("#b1aa93"), Color("#55585a"), 1)
+	_paint_iso_tile(image, TILE_ROAD_X, Color("#35434d"), Color("#202f3b"), 2)
+	_paint_iso_tile(image, TILE_ROAD_Y, Color("#35434d"), Color("#202f3b"), 3)
+	_paint_iso_tile(image, TILE_INTERSECTION, Color("#414d53"), Color("#202f3b"), 4)
 	_paint_iso_tile(image, TILE_WATER, Color("#3c8290"), Color("#285764"), 5)
 	_paint_iso_tile(image, TILE_PARK, Color("#4d9563"), Color("#2f684f"), 6)
 	_paint_iso_tile(image, TILE_PARK_PATH, Color("#c0b18b"), Color("#776c58"), 7)
@@ -595,54 +611,68 @@ func _build_city_blocks() -> void:
 			_add_landmark(block, str(landmark_blocks[block]))
 			continue
 
-		var occupied: Array[Vector2i] = []
-		var building_count: int = _rng.randi_range(2, 4)
 		var block_center := Vector2i(block.x + ROAD_SPACING / 2, block.y + ROAD_SPACING / 2)
+		var in_visual_neighborhood: bool = _visual_neighborhood_rect.has_point(block_center)
+		var occupied: Array[Vector2i] = []
+		var building_count: int = CityBuildingProfile.roll_count(_rng, in_visual_neighborhood)
 		var normalized_y: float = float(block_center.y) / float(_map_height)
 		var is_skyline: bool = (
 			absf(normalized_y - 0.52) < 0.19
 			and absf(float(block_center.x) - float(_map_width) * 0.5) < float(_map_width) * 0.32
 		)
+		var minimum_building_distance: float = 2.8 if in_visual_neighborhood else 2.0
 
 		for building_index: int in range(building_count):
-			var cell: Vector2i = _pick_free_cell(min_x, max_x, min_y, max_y, occupied, 2.8)
+			var cell: Vector2i = _pick_free_cell(
+				min_x, max_x, min_y, max_y, occupied, minimum_building_distance
+			)
 			if cell.x < 0:
 				continue
 			occupied.append(cell)
 
 			var palette_index: int = _rng.randi_range(0, wall_palette.size() - 1)
-			var building_height: float = _rng.randf_range(64.0, 118.0)
-			if not is_skyline and _rng.randf() < 0.36:
-				building_height = _rng.randf_range(43.0, 71.0)
-			elif is_skyline and building_index == 0:
-				building_height = _rng.randf_range(154.0, 226.0)
-			elif is_skyline and _rng.randf() < 0.36:
-				building_height = _rng.randf_range(122.0, 168.0)
-			elif _rng.randf() < 0.12:
-				building_height = _rng.randf_range(120.0, 152.0)
+			var building_height: float = CityBuildingProfile.roll_height(
+				_rng, in_visual_neighborhood, is_skyline, building_index
+			)
+			var building_footprint: Vector2 = CityBuildingProfile.roll_footprint(
+				_rng, in_visual_neighborhood
+			)
 			_props.call(
 				"add_building",
 				_cell_to_world(cell),
-				_rng.randf_range(46.0, 68.0),
-				_rng.randf_range(30.0, 48.0),
+				building_footprint.x,
+				building_footprint.y,
 				building_height,
 				wall_palette[palette_index],
 				roof_palette[palette_index],
 				_rng.randi_range(0, 4),
-				_rng.randi()
+				_rng.randi(),
+				in_visual_neighborhood
 			)
 
-		if _rng.randf() < 0.46:
-			var tree_cell: Vector2i = _pick_free_cell(min_x, max_x, min_y, max_y, occupied, 2.2)
+		var should_add_tree: bool = true
+		if in_visual_neighborhood:
+			should_add_tree = _rng.randf() < 0.46
+		if should_add_tree:
+			var tree_distance: float = 2.2 if in_visual_neighborhood else 1.7
+			var tree_cell: Vector2i = _pick_free_cell(
+				min_x, max_x, min_y, max_y, occupied, tree_distance
+			)
 			if tree_cell.x >= 0:
 				occupied.append(tree_cell)
 				var tree_color: Color = tree_palette[_rng.randi_range(0, tree_palette.size() - 1)]
 				_props.call(
 					"add_tree", _cell_to_world(tree_cell), tree_color, _rng.randf_range(24.0, 35.0)
 				)
-				if _rng.randf() < 0.16:
+				var should_add_extra_tree: bool
+				if in_visual_neighborhood:
+					should_add_extra_tree = _rng.randf() < 0.16
+				else:
+					should_add_extra_tree = _rng.randf() < 0.30
+				if should_add_extra_tree:
+					var extra_tree_distance: float = 2.0 if in_visual_neighborhood else 1.7
 					var extra_tree_cell: Vector2i = _pick_free_cell(
-						min_x, max_x, min_y, max_y, occupied, 2.0
+						min_x, max_x, min_y, max_y, occupied, extra_tree_distance
 					)
 					if extra_tree_cell.x >= 0:
 						var extra_color: Color = tree_palette[_rng.randi_range(
@@ -803,12 +833,18 @@ func _build_citizens() -> void:
 
 	var pedestrian_blocks: Array[Vector2i] = []
 	pedestrian_blocks.append_array(_city_blocks)
-	pedestrian_blocks.shuffle()
+	for index: int in range(pedestrian_blocks.size() - 1, 0, -1):
+		var swap_index: int = _rng.randi_range(0, index)
+		var saved_block: Vector2i = pedestrian_blocks[index]
+		pedestrian_blocks[index] = pedestrian_blocks[swap_index]
+		pedestrian_blocks[swap_index] = saved_block
 	var citizen_budget: int = mini(
 		pedestrian_blocks.size(), clampi(int(roundf(float(_city_block_count) * 0.72)), 20, 128)
 	)
 	for block_index: int in range(citizen_budget):
 		var block: Vector2i = pedestrian_blocks[block_index]
+		var block_center := Vector2i(block.x + ROAD_SPACING / 2, block.y + ROAD_SPACING / 2)
+		var in_visual_neighborhood: bool = _visual_neighborhood_rect.has_point(block_center)
 		var route: PackedVector2Array = _make_block_sidewalk_route(block.x, block.y)
 		if route.size() < 4:
 			continue
@@ -822,7 +858,8 @@ func _build_citizens() -> void:
 			trouser_colors[_rng.randi_range(0, trouser_colors.size() - 1)],
 			Color("#f0b88d") if _rng.randf() < 0.68 else Color("#9c654e"),
 			Color("#382c35") if _rng.randf() < 0.78 else Color("#c88a52"),
-			_rng.randf_range(0.0, _route_length(route))
+			_rng.randf_range(0.0, _route_length(route)),
+			in_visual_neighborhood
 		)
 		_population.add_child(citizen)
 		_citizen_count += 1

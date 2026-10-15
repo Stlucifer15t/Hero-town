@@ -27,6 +27,19 @@ func get_building_atlas_size() -> Vector2i:
 	return Vector2i(BUILDING_ATLAS.get_width(), BUILDING_ATLAS.get_height())
 
 
+func get_building_render_counts() -> Vector2i:
+	var atlas_count: int = 0
+	var procedural_count: int = 0
+	for prop: Dictionary in _props:
+		if str(prop["kind"]) != "building":
+			continue
+		if bool(prop.get("neighborhood_art", false)):
+			atlas_count += 1
+		else:
+			procedural_count += 1
+	return Vector2i(atlas_count, procedural_count)
+
+
 func clear() -> void:
 	_props.clear()
 	queue_redraw()
@@ -40,7 +53,8 @@ func add_building(
 	wall_color: Color,
 	roof_color: Color,
 	variant: int,
-	seed_value: int
+	seed_value: int,
+	neighborhood_art: bool = false
 ) -> void:
 	(
 		_props
@@ -55,6 +69,7 @@ func add_building(
 				"roof_color": roof_color,
 				"variant": variant,
 				"seed": seed_value,
+				"neighborhood_art": neighborhood_art,
 			}
 		)
 	)
@@ -158,9 +173,12 @@ func _draw() -> void:
 	for prop: Dictionary in sorted_props:
 		match str(prop["kind"]):
 			"building":
-				_draw_atlas_building(prop)
+				if bool(prop.get("neighborhood_art", false)):
+					_draw_atlas_building(prop)
+				else:
+					_draw_procedural_building(prop)
 			"landmark":
-				_draw_landmark(prop)
+				_draw_procedural_building(prop)
 			"tree":
 				_draw_tree(prop)
 			"bench":
@@ -209,7 +227,7 @@ func _draw_atlas_building(prop: Dictionary) -> void:
 	)
 
 
-func _draw_landmark(prop: Dictionary) -> void:
+func _draw_procedural_building(prop: Dictionary) -> void:
 	var center: Vector2 = prop["position"]
 	var half_width: float = float(prop["width"]) * 0.5
 	var half_depth: float = float(prop["depth"]) * 0.5

@@ -17,6 +17,7 @@ func _run() -> void:
 	var ground: TileMapLayer
 	var dimensions := Vector2i.ZERO
 	var actual_tile_count: int = 0
+	var visual_neighborhood_bounds := Rect2i()
 	if failure.is_empty():
 		city = CityGenerator.new()
 		root.add_child(city)
@@ -31,6 +32,9 @@ func _run() -> void:
 		var expected_dimensions := Vector2i(12 * 8 + 1, 18 * 8 + 1)
 		if dimensions != expected_dimensions:
 			failure = "Large city map dimensions are incorrect: %s." % dimensions
+		visual_neighborhood_bounds = city.call("get_visual_neighborhood_bounds")
+		if failure.is_empty() and visual_neighborhood_bounds.size != Vector2i(56, 64):
+			failure = "The rich visual treatment is not scoped to one 7 × 8-block neighborhood."
 
 	if failure.is_empty():
 		var expected_tile_count: int = (dimensions.x + 4) * (dimensions.y + 4)
@@ -60,6 +64,24 @@ func _run() -> void:
 			failure = "Generated city has no consolidated static-props renderer."
 		elif static_props.call("get_building_atlas_size") != Vector2i(896, 224):
 			failure = "Generated city is missing its shared building sprite atlas."
+		else:
+			var building_render_counts: Vector2i = static_props.call("get_building_render_counts")
+			if building_render_counts.x <= 0 or building_render_counts.y <= 0:
+				failure = "Neighborhood sprite buildings were not kept inside a limited city slice."
+
+	if failure.is_empty():
+		var population: Node = city.get_node_or_null("Population")
+		var large_walker_found: bool = false
+		var original_walker_found: bool = false
+		if population != null:
+			for citizen: Node in population.get_children():
+				var character_scale: float = citizen.call("get_character_scale")
+				if is_equal_approx(character_scale, 1.55):
+					large_walker_found = true
+				elif is_equal_approx(character_scale, 1.0):
+					original_walker_found = true
+		if not large_walker_found or not original_walker_found:
+			failure = "Larger walkers were not localized to the neighborhood prototype."
 
 	if failure.is_empty():
 		var park_bounds: Rect2i = city.call("get_park_bounds")
@@ -72,6 +94,7 @@ func _run() -> void:
 		var park_variant_found: bool = false
 		var water_variant_found: bool = false
 		var sidewalk_variant_found: bool = false
+		var outside_variant_found: bool = false
 		for y: int in range(park_bounds.position.y, park_bounds.position.y + park_bounds.size.y):
 			for x: int in range(
 				park_bounds.position.x, park_bounds.position.x + park_bounds.size.x
@@ -91,14 +114,19 @@ func _run() -> void:
 				arterial_tile_found = true
 			if tile_id == CityGenerator.TILE_DOCK:
 				dock_tile_found = true
+			var is_visual_neighborhood_cell: bool = visual_neighborhood_bounds.has_point(cell)
 			if tile_id == CityGenerator.TILE_GRASS_VARIANT:
-				grass_variant_found = true
+				grass_variant_found = grass_variant_found or is_visual_neighborhood_cell
+				outside_variant_found = outside_variant_found or not is_visual_neighborhood_cell
 			if tile_id == CityGenerator.TILE_PARK_VARIANT:
-				park_variant_found = true
+				park_variant_found = park_variant_found or is_visual_neighborhood_cell
+				outside_variant_found = outside_variant_found or not is_visual_neighborhood_cell
 			if tile_id == CityGenerator.TILE_WATER_VARIANT:
-				water_variant_found = true
+				water_variant_found = water_variant_found or is_visual_neighborhood_cell
+				outside_variant_found = outside_variant_found or not is_visual_neighborhood_cell
 			if tile_id == CityGenerator.TILE_SIDEWALK_VARIANT:
-				sidewalk_variant_found = true
+				sidewalk_variant_found = sidewalk_variant_found or is_visual_neighborhood_cell
+				outside_variant_found = outside_variant_found or not is_visual_neighborhood_cell
 		if (
 			not park_tile_found
 			or not road_tile_found
@@ -109,8 +137,9 @@ func _run() -> void:
 			or not park_variant_found
 			or not water_variant_found
 			or not sidewalk_variant_found
+			or outside_variant_found
 		):
-			failure = "Large city is missing its textured ground variants or island districts."
+			failure = "Ground textures escaped the neighborhood slice or city districts are missing."
 
 	var large_block_count: int = int(city.call("get_city_block_count")) if city != null else 0
 	var mega_dimensions := Vector2i.ZERO

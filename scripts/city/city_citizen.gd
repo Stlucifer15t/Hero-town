@@ -13,6 +13,24 @@ var _walk_phase: float = 0.0
 var _facing: float = 1.0
 
 
+func _ready() -> void:
+	var viewport_notifier := VisibleOnScreenNotifier2D.new()
+	viewport_notifier.name = "ViewportActivity"
+	viewport_notifier.rect = Rect2(Vector2(-24.0, -58.0), Vector2(48.0, 64.0))
+	viewport_notifier.screen_entered.connect(_on_screen_entered)
+	viewport_notifier.screen_exited.connect(_on_screen_exited)
+	add_child(viewport_notifier)
+	set_process(false)
+
+
+func _on_screen_entered() -> void:
+	set_process(true)
+
+
+func _on_screen_exited() -> void:
+	set_process(false)
+
+
 func configure(
 	route: PackedVector2Array,
 	speed: float,
@@ -79,38 +97,96 @@ func _advance(distance: float) -> void:
 
 
 func _draw() -> void:
-	var bob: float = absf(sin(_walk_phase)) * 1.4
+	const CHARACTER_SCALE: float = 1.55
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * CHARACTER_SCALE)
+	var bob: float = absf(sin(_walk_phase)) * 1.2
 	var leg_swing: float = sin(_walk_phase) * 2.0
+	var arm_swing: float = cos(_walk_phase) * 1.4
 	var outline: Color = Color("#17232c")
+	var shadow: Color = Color(0.06, 0.10, 0.12, 0.32)
 
-	# Small diamond shadow keeps each pedestrian grounded on the isometric tiles.
+	# Chunky silhouette and animated limbs make passers-by readable at phone zoom.
 	draw_colored_polygon(
 		PackedVector2Array(
-			[Vector2(-8.0, 1.0), Vector2(0.0, -2.0), Vector2(8.0, 1.0), Vector2(0.0, 4.0)]
+			[Vector2(-8.0, 2.0), Vector2(0.0, -2.0), Vector2(9.0, 2.0), Vector2(0.0, 6.0)]
 		),
-		Color(0.06, 0.10, 0.12, 0.35)
+		shadow
 	)
-
-	# Pixel-like legs and torso.
 	draw_rect(Rect2(Vector2(-4.0, -10.0 + bob), Vector2(8.0, 8.0)), outline)
 	draw_rect(Rect2(Vector2(-3.0, -9.0 + bob), Vector2(6.0, 7.0)), _trouser_color)
-	draw_rect(Rect2(Vector2(-3.0 + leg_swing, -3.0 + bob), Vector2(3.0, 6.0)), outline)
-	draw_rect(Rect2(Vector2(1.0 - leg_swing, -3.0 + bob), Vector2(3.0, 6.0)), outline)
+	draw_rect(Rect2(Vector2(-4.0 + leg_swing, -3.0 + bob), Vector2(4.0, 7.0)), outline)
+	draw_rect(Rect2(Vector2(0.0 - leg_swing, -3.0 + bob), Vector2(4.0, 7.0)), outline)
 	draw_rect(
-		Rect2(Vector2(-2.0 + leg_swing, -2.0 + bob), Vector2(2.0, 4.0)),
-		_trouser_color.lightened(0.08)
+		Rect2(Vector2(-3.0 + leg_swing, -2.0 + bob), Vector2(3.0, 5.0)),
+		_trouser_color.lightened(0.12)
 	)
 	draw_rect(
-		Rect2(Vector2(2.0 - leg_swing, -2.0 + bob), Vector2(2.0, 4.0)),
-		_trouser_color.lightened(0.08)
+		Rect2(Vector2(1.0 - leg_swing, -2.0 + bob), Vector2(3.0, 5.0)),
+		_trouser_color.lightened(0.06)
 	)
-	draw_rect(Rect2(Vector2(-5.0, -19.0 + bob), Vector2(10.0, 11.0)), outline)
-	draw_rect(Rect2(Vector2(-4.0, -18.0 + bob), Vector2(8.0, 9.0)), _shirt_color)
-	draw_rect(Rect2(Vector2(-3.0, -27.0 + bob), Vector2(7.0, 8.0)), outline)
-	draw_rect(Rect2(Vector2(-2.0, -26.0 + bob), Vector2(5.0, 6.0)), _skin_color)
-	draw_rect(Rect2(Vector2(-3.0, -28.0 + bob), Vector2(7.0, 3.0)), _hair_color)
+	draw_rect(Rect2(Vector2(-5.0 + leg_swing, 2.0 + bob), Vector2(5.0, 2.0)), outline)
+	draw_rect(Rect2(Vector2(0.0 - leg_swing, 2.0 + bob), Vector2(5.0, 2.0)), outline)
 
-	# A one-pixel highlight and eye make the facing direction readable when zoomed in.
+	# A small backpack and swinging arms give each person a stronger 3D silhouette.
+	var backpack_x: float = -7.0 if _facing > 0.0 else 4.0
+	draw_rect(Rect2(Vector2(backpack_x, -18.0 + bob), Vector2(4.0, 9.0)), outline)
+	draw_rect(Rect2(Vector2(backpack_x + 1.0, -17.0 + bob), Vector2(2.0, 6.0)), Color("#82684e"))
+	draw_rect(Rect2(Vector2(-7.0, -17.0 + bob + arm_swing), Vector2(4.0, 10.0)), outline)
+	draw_rect(
+		Rect2(Vector2(-6.0, -16.0 + bob + arm_swing), Vector2(2.0, 8.0)),
+		_shirt_color.darkened(0.12)
+	)
+	draw_rect(Rect2(Vector2(3.0, -17.0 + bob - arm_swing), Vector2(4.0, 10.0)), outline)
+	draw_rect(
+		Rect2(Vector2(4.0, -16.0 + bob - arm_swing), Vector2(2.0, 8.0)),
+		_shirt_color.lightened(0.04)
+	)
+
+	var torso_points := PackedVector2Array(
+		[
+			Vector2(-4.0, -20.0 + bob),
+			Vector2(4.0, -20.0 + bob),
+			Vector2(6.0, -17.0 + bob),
+			Vector2(5.0, -9.0 + bob),
+			Vector2(-5.0, -9.0 + bob),
+			Vector2(-6.0, -17.0 + bob),
+		]
+	)
+	draw_colored_polygon(torso_points, outline)
+	draw_colored_polygon(
+		PackedVector2Array(
+			[
+				Vector2(-3.0, -19.0 + bob),
+				Vector2(3.0, -19.0 + bob),
+				Vector2(4.0, -16.0 + bob),
+				Vector2(4.0, -10.0 + bob),
+				Vector2(-4.0, -10.0 + bob),
+				Vector2(-5.0, -16.0 + bob),
+			]
+		),
+		_shirt_color
+	)
+	draw_rect(Rect2(Vector2(-1.0, -18.0 + bob), Vector2(2.0, 5.0)), _shirt_color.lightened(0.30))
+	draw_rect(Rect2(Vector2(-4.0, -11.0 + bob), Vector2(8.0, 2.0)), _trouser_color.darkened(0.04))
+
+	# Larger head, hair shape and eye read clearly without turning pedestrians into heroes.
+	draw_rect(Rect2(Vector2(-4.0, -29.0 + bob), Vector2(9.0, 10.0)), outline)
+	draw_rect(Rect2(Vector2(-3.0, -28.0 + bob), Vector2(7.0, 8.0)), _skin_color)
+	draw_colored_polygon(
+		PackedVector2Array(
+			[
+				Vector2(-4.0, -27.0 + bob),
+				Vector2(-3.0, -31.0 + bob),
+				Vector2(2.0, -32.0 + bob),
+				Vector2(5.0, -29.0 + bob),
+				Vector2(4.0, -26.0 + bob),
+				Vector2(1.0, -28.0 + bob),
+				Vector2(-2.0, -26.0 + bob),
+			]
+		),
+		_hair_color
+	)
 	var eye_x: float = 1.0 if _facing > 0.0 else -2.0
-	draw_rect(Rect2(Vector2(-3.0, -17.0 + bob), Vector2(2.0, 2.0)), _shirt_color.lightened(0.28))
-	draw_rect(Rect2(Vector2(eye_x, -24.0 + bob), Vector2(1.0, 1.0)), outline)
+	draw_rect(Rect2(Vector2(eye_x, -24.0 + bob), Vector2(1.5, 1.5)), outline)
+	draw_rect(Rect2(Vector2(-3.0, -23.0 + bob), Vector2(2.0, 1.0)), _skin_color.lightened(0.24))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

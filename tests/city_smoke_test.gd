@@ -45,9 +45,21 @@ func _run() -> void:
 		failure = "Large city map did not generate enough buildable city blocks."
 	if (
 		failure.is_empty()
-		and (int(city.call("get_citizen_count")) <= 0 or int(city.call("get_car_count")) < 12)
+		and (
+			int(city.call("get_citizen_count")) <= 0
+			or int(city.call("get_citizen_count")) > 128
+			or int(city.call("get_car_count")) < 12
+			or int(city.call("get_car_count")) > 24
+		)
 	):
-		failure = "Large city map did not spawn its citizens and vehicles."
+		failure = "Large city actor counts are outside the mobile-safe budget."
+
+	if failure.is_empty():
+		var static_props: Node = city.get_node_or_null("StaticProps")
+		if static_props == null:
+			failure = "Generated city has no consolidated static-props renderer."
+		elif static_props.call("get_building_atlas_size") != Vector2i(896, 224):
+			failure = "Generated city is missing its shared building sprite atlas."
 
 	if failure.is_empty():
 		var park_bounds: Rect2i = city.call("get_park_bounds")
@@ -56,6 +68,10 @@ func _run() -> void:
 		var water_tile_found: bool = false
 		var arterial_tile_found: bool = false
 		var dock_tile_found: bool = false
+		var grass_variant_found: bool = false
+		var park_variant_found: bool = false
+		var water_variant_found: bool = false
+		var sidewalk_variant_found: bool = false
 		for y: int in range(park_bounds.position.y, park_bounds.position.y + park_bounds.size.y):
 			for x: int in range(
 				park_bounds.position.x, park_bounds.position.x + park_bounds.size.x
@@ -75,14 +91,26 @@ func _run() -> void:
 				arterial_tile_found = true
 			if tile_id == CityGenerator.TILE_DOCK:
 				dock_tile_found = true
+			if tile_id == CityGenerator.TILE_GRASS_VARIANT:
+				grass_variant_found = true
+			if tile_id == CityGenerator.TILE_PARK_VARIANT:
+				park_variant_found = true
+			if tile_id == CityGenerator.TILE_WATER_VARIANT:
+				water_variant_found = true
+			if tile_id == CityGenerator.TILE_SIDEWALK_VARIANT:
+				sidewalk_variant_found = true
 		if (
 			not park_tile_found
 			or not road_tile_found
 			or not water_tile_found
 			or not arterial_tile_found
 			or not dock_tile_found
+			or not grass_variant_found
+			or not park_variant_found
+			or not water_variant_found
+			or not sidewalk_variant_found
 		):
-			failure = "Large city is missing its park, street grid, water, arterial, or harbor tiles."
+			failure = "Large city is missing its textured ground variants or island districts."
 
 	var large_block_count: int = int(city.call("get_city_block_count")) if city != null else 0
 	var mega_dimensions := Vector2i.ZERO

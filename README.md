@@ -11,7 +11,7 @@ A landscape-first Godot 4 mobile game prototype. The project is being built in t
 
 The city uses an original pixel-art look inspired by a **TheoTown community island city**, not a real-world map. Its broad layout reference is **Secaton** by Kevin 421 Hung, listed in the TheoTown Center sandbox collection as an island city with roughly 208,000 inhabitants: [TheoTown Center map listing](https://sites.google.com/view/retrocitycenter/theotown/maps/sandboxfree-mode). The same archive labels a 2,800+-tile “Former Largest Map” as not recommended for mobile, so Hero Town does not use that oversized map.
 
-The old Secaton download link is no longer accessible from the archive, and the listing does not specify a reuse license. Hero Town therefore does **not** bundle or import a TheoTown save, screenshot, tileset, or exact street plan. It translates the public island-city concept into a new playable layout: irregular coast and inlets, waterfront roads, a ring route, mixed street grids, parks, a harbor district, and a denser central skyline. All game graphics are original procedural shapes.
+The old Secaton download link is no longer accessible from the archive, and the listing does not specify a reuse license. Hero Town therefore does **not** bundle or import a TheoTown save, screenshot, texture, or exact street plan. It translates the public island-city concept into a new playable layout: irregular coast and inlets, waterfront roads, a ring route, mixed street grids, parks, a harbor district, and a denser central skyline. The ground tiles are original procedural art, and the buildings use original project-specific pixel-art sprites in a shared atlas.
 
 ### Selectable map sizes
 
@@ -23,6 +23,10 @@ The old Secaton download link is no longer accessible from the archive, and the 
 | Megacity | 16 × 24 blocks | 129 × 193 | 384 |
 
 The shoreline and parks leave some slots as water or green space, so the number of built city blocks is lower than the maximum. The default selection is **Large City**; the largest option stays within a phone-oriented tile footprint rather than using the community archive's 2,800+-tile map.
+
+### Art direction and mobile rendering
+
+The starter building atlas contains original townhouse, shop, apartment, and mid-rise art; it is not copied from TheoTown. The closer default camera, quieter tile seams, varied ground textures, and larger walkers are intended to make the neighborhood view more readable. Static buildings share one renderer and texture atlas, the ground remains a `TileMapLayer`, and pedestrians/vehicles pause their movement updates when off-screen. The number of walkers and vehicles is capped to keep the Android update budget bounded. Actual frame pacing still needs confirmation on a phone.
 
 ## Android / phone testing
 

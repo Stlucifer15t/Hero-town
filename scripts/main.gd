@@ -7,7 +7,7 @@ const CityStartMenu = preload("res://scripts/ui/city_start_menu.gd")
 
 const CITY_SEED: int = 20261015
 const DEFAULT_MAP_SIZE: int = 2
-const STARTING_ZOOMS: Array[float] = [0.46, 0.40, 0.35, 0.31]
+const STARTING_ZOOMS: Array[float] = [0.70, 0.64, 0.58, 0.52]
 
 var _city: Node2D
 var _camera: Camera2D

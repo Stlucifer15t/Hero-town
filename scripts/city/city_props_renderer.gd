@@ -1,7 +1,30 @@
 extends Node2D
 
-## Lightweight pixel-art props. All shapes are original procedural placeholders.
+## Pixel-art city props rendered through a shared, original sprite atlas.
+const BUILDING_ATLAS: Texture2D = preload("res://assets/city/city_building_atlas.png")
+const BUILDING_SPRITE_REGIONS: Array[Rect2] = [
+	Rect2(20.0, 8.0, 184.0, 208.0),
+	Rect2(240.0, 39.0, 192.0, 177.0),
+	Rect2(484.0, 8.0, 151.0, 208.0),
+	Rect2(691.0, 8.0, 186.0, 208.0),
+]
+const BUILDING_TINTS: Array[Color] = [
+	Color.WHITE,
+	Color("#fff6e8"),
+	Color("#e9f3ff"),
+	Color("#f5eee4"),
+	Color("#f0f4e7"),
+]
+
 var _props: Array[Dictionary] = []
+
+
+func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+
+
+func get_building_atlas_size() -> Vector2i:
+	return Vector2i(BUILDING_ATLAS.get_width(), BUILDING_ATLAS.get_height())
 
 
 func clear() -> void:
@@ -134,8 +157,10 @@ func _draw() -> void:
 
 	for prop: Dictionary in sorted_props:
 		match str(prop["kind"]):
-			"building", "landmark":
-				_draw_building(prop)
+			"building":
+				_draw_atlas_building(prop)
+			"landmark":
+				_draw_landmark(prop)
 			"tree":
 				_draw_tree(prop)
 			"bench":
@@ -152,7 +177,39 @@ func _draw() -> void:
 				_draw_harbor_boat(prop)
 
 
-func _draw_building(prop: Dictionary) -> void:
+func _draw_atlas_building(prop: Dictionary) -> void:
+	var center: Vector2 = prop["position"]
+	var height: float = float(prop["height"])
+	var depth: float = float(prop["depth"])
+	var sprite_index: int = 0
+	if height >= 145.0:
+		sprite_index = 3
+	elif height >= 72.0:
+		sprite_index = 2
+	elif height >= 58.0:
+		sprite_index = 1
+
+	var source_rect: Rect2 = BUILDING_SPRITE_REGIONS[sprite_index]
+	var display_height: float = clampf(height + depth * 0.38 + 20.0, 72.0, 244.0)
+	var display_width: float = display_height * source_rect.size.x / source_rect.size.y
+	var destination := Rect2(
+		Vector2(center.x - display_width * 0.5, center.y - display_height),
+		Vector2(display_width, display_height)
+	)
+	var shadow_half_width: float = maxf(float(prop["width"]), display_width * 0.36)
+	_draw_diamond(
+		center + Vector2(3.0, 5.0),
+		shadow_half_width,
+		maxf(depth * 0.42, display_width * 0.12),
+		Color(0.04, 0.08, 0.10, 0.25)
+	)
+	var tint_index: int = posmod(int(prop["variant"]), BUILDING_TINTS.size())
+	draw_texture_rect_region(
+		BUILDING_ATLAS, destination, source_rect, BUILDING_TINTS[tint_index], false
+	)
+
+
+func _draw_landmark(prop: Dictionary) -> void:
 	var center: Vector2 = prop["position"]
 	var half_width: float = float(prop["width"]) * 0.5
 	var half_depth: float = float(prop["depth"]) * 0.5

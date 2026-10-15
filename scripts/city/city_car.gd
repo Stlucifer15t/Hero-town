@@ -11,6 +11,24 @@ var _roof_color: Color = Color("#f4d889")
 var _vehicle_type: int = 0
 
 
+func _ready() -> void:
+	var viewport_notifier := VisibleOnScreenNotifier2D.new()
+	viewport_notifier.name = "ViewportActivity"
+	viewport_notifier.rect = Rect2(Vector2(-36.0, -20.0), Vector2(72.0, 40.0))
+	viewport_notifier.screen_entered.connect(_on_screen_entered)
+	viewport_notifier.screen_exited.connect(_on_screen_exited)
+	add_child(viewport_notifier)
+	set_process(false)
+
+
+func _on_screen_entered() -> void:
+	set_process(true)
+
+
+func _on_screen_exited() -> void:
+	set_process(false)
+
+
 func configure(
 	route: PackedVector2Array,
 	speed: float,

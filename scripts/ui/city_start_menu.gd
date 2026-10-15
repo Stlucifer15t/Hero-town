@@ -68,7 +68,7 @@ func _build_menu() -> void:
 	heading_column.add_child(heading)
 
 	var subtitle := Label.new()
-	subtitle.text = "Choose a map size · Manhattan-inspired grid, Central Park and a curving Broadway"
+	subtitle.text = "Choose a map size · island districts, waterfront roads, ring route and parks"
 	subtitle.add_theme_font_size_override("font_size", 14)
 	subtitle.add_theme_color_override("font_color", Color("#9ab9b7"))
 	heading_column.add_child(subtitle)

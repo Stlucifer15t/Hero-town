@@ -106,6 +106,26 @@ func add_street_lamp(world_position: Vector2) -> void:
 	queue_redraw()
 
 
+func add_port_crane(world_position: Vector2) -> void:
+	_props.append({"kind": "port_crane", "position": world_position})
+	queue_redraw()
+
+
+func add_shipping_container(world_position: Vector2, container_color: Color) -> void:
+	var container_prop: Dictionary = {
+		"kind": "container",
+		"position": world_position,
+		"container_color": container_color,
+	}
+	_props.append(container_prop)
+	queue_redraw()
+
+
+func add_harbor_boat(world_position: Vector2) -> void:
+	_props.append({"kind": "harbor_boat", "position": world_position})
+	queue_redraw()
+
+
 func _draw() -> void:
 	var sorted_props: Array[Dictionary] = _props.duplicate()
 	sorted_props.sort_custom(
@@ -124,6 +144,12 @@ func _draw() -> void:
 				_draw_fountain(prop)
 			"street_lamp":
 				_draw_street_lamp(prop)
+			"port_crane":
+				_draw_port_crane(prop)
+			"container":
+				_draw_container(prop)
+			"harbor_boat":
+				_draw_harbor_boat(prop)
 
 
 func _draw_building(prop: Dictionary) -> void:
@@ -398,6 +424,95 @@ func _draw_street_lamp(prop: Dictionary) -> void:
 	draw_rect(Rect2(center + Vector2(-2.0, -28.0), Vector2(4.0, 29.0)), Color("#354249"))
 	draw_rect(Rect2(center + Vector2(-6.0, -32.0), Vector2(12.0, 5.0)), Color("#303c40"))
 	draw_rect(Rect2(center + Vector2(-4.0, -31.0), Vector2(8.0, 3.0)), Color("#f1d992"))
+
+
+func _draw_port_crane(prop: Dictionary) -> void:
+	var center: Vector2 = prop["position"]
+	var steel: Color = Color("#465b5d")
+	var highlight: Color = Color("#a5b5a6")
+	_draw_diamond(center + Vector2(3.0, 5.0), 30.0, 13.0, Color(0.04, 0.08, 0.08, 0.24))
+	draw_rect(Rect2(center + Vector2(-17.0, -47.0), Vector2(5.0, 48.0)), steel.darkened(0.12))
+	draw_rect(Rect2(center + Vector2(12.0, -47.0), Vector2(5.0, 48.0)), steel)
+	draw_rect(Rect2(center + Vector2(-20.0, -51.0), Vector2(39.0, 5.0)), highlight)
+	draw_rect(Rect2(center + Vector2(-18.0, -66.0), Vector2(7.0, 16.0)), steel)
+	draw_rect(Rect2(center + Vector2(-15.0, -69.0), Vector2(27.0, 5.0)), highlight)
+	draw_line(center + Vector2(7.0, -66.0), center + Vector2(17.0, -40.0), steel, 3.0)
+	draw_rect(Rect2(center + Vector2(15.0, -40.0), Vector2(5.0, 12.0)), Color("#3d4a4a"))
+	draw_rect(Rect2(center + Vector2(-9.0, -46.0), Vector2(8.0, 5.0)), Color("#d6ad5c"))
+
+
+func _draw_container(prop: Dictionary) -> void:
+	var center: Vector2 = prop["position"]
+	var body: Color = prop["container_color"]
+	var half_width: float = 19.0
+	var half_depth: float = 11.0
+	var height: float = 17.0
+	var back := center + Vector2(0.0, -half_depth)
+	var right := center + Vector2(half_width, 0.0)
+	var front := center + Vector2(0.0, half_depth)
+	var left := center + Vector2(-half_width, 0.0)
+	var lift := Vector2(0.0, -height)
+	_draw_diamond(
+		center + Vector2(2.0, 4.0),
+		half_width + 3.0,
+		half_depth + 3.0,
+		Color(0.04, 0.08, 0.08, 0.23)
+	)
+	draw_colored_polygon(
+		PackedVector2Array([left, front, front + lift, left + lift]), body.darkened(0.24)
+	)
+	draw_colored_polygon(
+		PackedVector2Array([front, right, right + lift, front + lift]), body.darkened(0.38)
+	)
+	draw_colored_polygon(
+		PackedVector2Array([back + lift, right + lift, front + lift, left + lift]),
+		body.lightened(0.07)
+	)
+	for rib: int in range(-2, 3):
+		var x: float = center.x + float(rib) * 6.0
+		draw_line(
+			Vector2(x, center.y - height + 2.0),
+			Vector2(x, center.y + 2.0),
+			body.darkened(0.18),
+			1.5
+		)
+
+
+func _draw_harbor_boat(prop: Dictionary) -> void:
+	var center: Vector2 = prop["position"]
+	var outline: Color = Color("#233a43")
+	var hull: Color = Color("#bf5e4e")
+	_draw_diamond(center + Vector2(3.0, 6.0), 29.0, 11.0, Color(0.04, 0.08, 0.08, 0.26))
+	draw_colored_polygon(
+		PackedVector2Array(
+			[
+				center + Vector2(-30.0, -2.0),
+				center + Vector2(-19.0, -9.0),
+				center + Vector2(20.0, -8.0),
+				center + Vector2(31.0, 0.0),
+				center + Vector2(19.0, 9.0),
+				center + Vector2(-20.0, 8.0),
+			]
+		),
+		outline
+	)
+	draw_colored_polygon(
+		PackedVector2Array(
+			[
+				center + Vector2(-25.0, -1.0),
+				center + Vector2(-17.0, -6.0),
+				center + Vector2(18.0, -5.0),
+				center + Vector2(25.0, 0.0),
+				center + Vector2(16.0, 6.0),
+				center + Vector2(-17.0, 5.0),
+			]
+		),
+		hull
+	)
+	draw_rect(Rect2(center + Vector2(-9.0, -12.0), Vector2(18.0, 8.0)), Color("#ded1ad"))
+	draw_rect(Rect2(center + Vector2(-6.0, -11.0), Vector2(5.0, 4.0)), Color("#7da8ad"))
+	draw_rect(Rect2(center + Vector2(2.0, -11.0), Vector2(5.0, 4.0)), Color("#7da8ad"))
+	draw_rect(Rect2(center + Vector2(-3.0, -17.0), Vector2(6.0, 6.0)), Color("#d7d2b8"))
 
 
 func _draw_diamond(center: Vector2, half_width: float, half_depth: float, color: Color) -> void:

@@ -28,7 +28,7 @@ func _run() -> void:
 
 	if failure.is_empty():
 		dimensions = city.call("get_map_dimensions")
-		var expected_dimensions := Vector2i(9 * 8 + 1, 24 * 8 + 1)
+		var expected_dimensions := Vector2i(12 * 8 + 1, 18 * 8 + 1)
 		if dimensions != expected_dimensions:
 			failure = "Large city map dimensions are incorrect: %s." % dimensions
 
@@ -54,6 +54,8 @@ func _run() -> void:
 		var park_tile_found: bool = false
 		var road_tile_found: bool = false
 		var water_tile_found: bool = false
+		var arterial_tile_found: bool = false
+		var dock_tile_found: bool = false
 		for y: int in range(park_bounds.position.y, park_bounds.position.y + park_bounds.size.y):
 			for x: int in range(
 				park_bounds.position.x, park_bounds.position.x + park_bounds.size.x
@@ -69,8 +71,18 @@ func _run() -> void:
 				road_tile_found = true
 			if tile_id == CityGenerator.TILE_WATER:
 				water_tile_found = true
-		if not park_tile_found or not road_tile_found or not water_tile_found:
-			failure = "Large city is missing its park, street grid, or surrounding water."
+			if tile_id == CityGenerator.TILE_ARTERIAL:
+				arterial_tile_found = true
+			if tile_id == CityGenerator.TILE_DOCK:
+				dock_tile_found = true
+		if (
+			not park_tile_found
+			or not road_tile_found
+			or not water_tile_found
+			or not arterial_tile_found
+			or not dock_tile_found
+		):
+			failure = "Large city is missing its park, street grid, water, arterial, or harbor tiles."
 
 	var large_block_count: int = int(city.call("get_city_block_count")) if city != null else 0
 	var mega_dimensions := Vector2i.ZERO
@@ -81,7 +93,7 @@ func _run() -> void:
 		await process_frame
 		mega_dimensions = mega_city.call("get_map_dimensions")
 		var mega_ground: TileMapLayer = mega_city.get_node_or_null("Ground") as TileMapLayer
-		if mega_dimensions != Vector2i(11 * 8 + 1, 30 * 8 + 1):
+		if mega_dimensions != Vector2i(16 * 8 + 1, 24 * 8 + 1):
 			failure = "The largest selectable map size is incorrect."
 		elif (
 			mega_ground == null
@@ -101,7 +113,7 @@ func _run() -> void:
 		small_city.call("generate", 15102027, 0)
 		await process_frame
 		small_dimensions = small_city.call("get_map_dimensions")
-		if small_dimensions != Vector2i(5 * 8 + 1, 12 * 8 + 1):
+		if small_dimensions != Vector2i(6 * 8 + 1, 8 * 8 + 1):
 			failure = "The smallest selectable map size is incorrect."
 		elif int(small_city.call("get_city_block_count")) <= 0:
 			failure = "The smallest selectable map generated no city blocks."

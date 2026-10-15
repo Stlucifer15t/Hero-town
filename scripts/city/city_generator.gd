@@ -1,6 +1,6 @@
 extends Node2D
 
-## Generates an original isometric city using Manhattan's street-plan as a layout reference.
+## Generates an original isometric island city inspired by TheoTown's Secaton community map.
 const CityPropsRenderer = preload("res://scripts/city/city_props_renderer.gd")
 const CityCitizen = preload("res://scripts/city/city_citizen.gd")
 const CityCar = preload("res://scripts/city/city_car.gd")
@@ -13,27 +13,27 @@ const CROSS_STREET_SPACING: int = ROAD_SPACING * 5
 const MAP_PRESETS: Array[Dictionary] = [
 	{
 		"name": "District",
-		"blocks_wide": 5,
-		"blocks_long": 12,
-		"description": "A compact neighborhood to explore.",
+		"blocks_wide": 6,
+		"blocks_long": 8,
+		"description": "A compact island district to explore.",
 	},
 	{
 		"name": "Borough",
-		"blocks_wide": 7,
-		"blocks_long": 16,
-		"description": "A larger town with room to roam.",
+		"blocks_wide": 9,
+		"blocks_long": 12,
+		"description": "A growing coastal town with several neighborhoods.",
 	},
 	{
 		"name": "Large City",
-		"blocks_wide": 9,
-		"blocks_long": 24,
-		"description": "A broad, busy Manhattan-inspired city.",
+		"blocks_wide": 12,
+		"blocks_long": 18,
+		"description": "A broad island city with a busy center and harbor.",
 	},
 	{
 		"name": "Megacity",
-		"blocks_wide": 11,
-		"blocks_long": 30,
-		"description": "The biggest map, with a long skyline and park.",
+		"blocks_wide": 16,
+		"blocks_long": 24,
+		"description": "The largest phone-friendly map, with room to expand.",
 	},
 ]
 
@@ -49,9 +49,10 @@ const TILE_PROMENADE: int = 8
 const TILE_AVENUE_X: int = 9
 const TILE_AVENUE_Y: int = 10
 const TILE_AVENUE_INTERSECTION: int = 11
-const TILE_BROADWAY: int = 12
+const TILE_ARTERIAL: int = 12
 const TILE_BRIDGE: int = 13
-const TILE_COUNT: int = 14
+const TILE_DOCK: int = 14
+const TILE_COUNT: int = 15
 
 var _rng := RandomNumberGenerator.new()
 var _ground: TileMapLayer
@@ -63,10 +64,10 @@ var _city_block_count: int = 0
 var _citizen_count: int = 0
 var _car_count: int = 0
 var _size_index: int = 2
-var _blocks_wide: int = 9
-var _blocks_long: int = 24
-var _map_width: int = 73
-var _map_height: int = 193
+var _blocks_wide: int = 12
+var _blocks_long: int = 18
+var _map_width: int = 97
+var _map_height: int = 145
 var _coast_left: Array[int] = []
 var _coast_right: Array[int] = []
 var _park_rect: Rect2i = Rect2i()
@@ -103,6 +104,7 @@ func generate(seed_value: int, preset_index: int = 2) -> void:
 	_build_ground()
 	_build_city_blocks()
 	_build_park_details()
+	_build_harbor_details()
 	_build_citizens()
 	_build_cars()
 
@@ -158,19 +160,29 @@ func _build_coastline() -> void:
 	_coast_right.clear()
 	for y: int in range(_map_height):
 		var t: float = float(y) / float(maxi(1, _map_height - 1))
-		var width_factor: float = 0.72 + 0.28 * sin(t * PI)
-		var center_shift: float = sin(t * TAU * 1.35) * float(_map_width) * 0.025
+		var end_taper: float = pow(maxf(sin(t * PI), 0.0), 0.72)
+		var width_factor: float = 0.46 + 0.54 * end_taper
+		var center_shift: float = sin(t * TAU * 0.92 + 0.4) * float(_map_width) * 0.065
+		var coast_wave: float = (
+			sin(t * TAU * 3.4 + 0.7) * float(_map_width) * 0.022
+			+ sin(t * TAU * 7.8 + 1.8) * float(_map_width) * 0.012
+		)
+		var west_bay: float = exp(-pow((t - 0.29) / 0.072, 2.0)) * float(_map_width) * 0.16
+		var east_bay: float = exp(-pow((t - 0.68) / 0.061, 2.0)) * float(_map_width) * 0.19
 		var center_x: float = float(_map_width) * 0.5 + center_shift
 		var half_width: float = float(_map_width) * width_factor * 0.5
-		_coast_left.append(clampi(int(floor(center_x - half_width)), 0, _map_width - 1))
-		_coast_right.append(clampi(int(ceil(center_x + half_width)), 0, _map_width - 1))
+		var left_edge: int = int(floor(center_x - half_width + coast_wave + west_bay))
+		var right_edge: int = int(ceil(center_x + half_width + coast_wave - east_bay))
+		_coast_left.append(clampi(left_edge, 0, _map_width - 1))
+		_coast_right.append(clampi(right_edge, 0, _map_width - 1))
 
 
 func _build_park_layout() -> void:
 	var park_blocks_wide: int = clampi(int(roundf(float(_blocks_wide) * 0.22)), 1, _blocks_wide - 2)
 	var park_blocks_long: int = clampi(int(roundf(float(_blocks_long) * 0.19)), 2, _blocks_long - 4)
-	var park_block_x: int = int(floor(float(_blocks_wide - park_blocks_wide) * 0.5))
-	var park_block_y: int = int(roundf(float(_blocks_long) * 0.39))
+	var park_center_x: float = float(_blocks_wide) * 0.58
+	var park_block_x: int = int(roundf(park_center_x - float(park_blocks_wide) * 0.5))
+	var park_block_y: int = int(roundf(float(_blocks_long) * 0.47 - float(park_blocks_long) * 0.5))
 	park_block_y = clampi(park_block_y, 1, _blocks_long - park_blocks_long - 1)
 	_park_rect = Rect2i(
 		Vector2i(park_block_x * ROAD_SPACING, park_block_y * ROAD_SPACING),
@@ -218,16 +230,57 @@ func _is_park_path(x: int, y: int) -> bool:
 	return local_y % (ROAD_SPACING * 2) == 0
 
 
-func _broadway_x_at(y: int) -> int:
+func _arterial_x_at(y: int) -> int:
 	var t: float = float(y) / float(maxi(1, _map_height - 1))
-	var curve: float = sin(t * PI * 2.2 + 0.65) * float(_map_width) * 0.12
+	var curve: float = sin(t * PI * 2.35 + 0.45) * float(_map_width) * 0.16
 	var x: int = int(roundf(float(_map_width) * 0.5 + curve))
 	if _is_in_park(x, y):
 		x = _park_rect.position.x - 3
 	return x
 
 
+func _secondary_arterial_x_at(y: int) -> int:
+	var t: float = float(y) / float(maxi(1, _map_height - 1))
+	var curve: float = cos(t * PI * 1.8 + 1.15) * float(_map_width) * 0.18
+	var x: int = int(roundf(float(_map_width) * 0.5 + curve))
+	if _is_in_park(x, y):
+		x = _park_rect.position.x + _park_rect.size.x + 3
+	return x
+
+
+func _is_primary_arterial(x: int, y: int) -> bool:
+	return x == _arterial_x_at(y) or x == _secondary_arterial_x_at(y)
+
+
+func _is_ring_road(x: int, y: int) -> bool:
+	var radius_x: float = maxf(1.0, float(_map_width) * 0.41)
+	var radius_y: float = maxf(1.0, float(_map_height) * 0.41)
+	var normalized_x: float = (float(x) - float(_map_width) * 0.5) / radius_x
+	var normalized_y: float = (float(y) - float(_map_height) * 0.5) / radius_y
+	var radius: float = sqrt(normalized_x * normalized_x + normalized_y * normalized_y)
+	return absf(radius - 0.72) <= 0.018
+
+
+func _is_dock_cell(x: int, y: int) -> bool:
+	if y < 0 or y >= _map_height:
+		return false
+	var harbor_center_y: int = int(_map_height * 0.29)
+	if abs(y - harbor_center_y) > 3:
+		return false
+	return x >= _coast_left[y] - 7 and x < _coast_left[y]
+
+
+func _is_near_ring_road(x: int, y: int) -> bool:
+	for offset_y: int in range(-1, 2):
+		for offset_x: int in range(-1, 2):
+			if _is_ring_road(x + offset_x, y + offset_y):
+				return true
+	return false
+
+
 func _tile_for_cell(x: int, y: int) -> int:
+	if _is_dock_cell(x, y):
+		return TILE_DOCK
 	if not _is_land(x, y):
 		if y >= 0 and y < _map_height and y % CROSS_STREET_SPACING == 0:
 			var left: int = _coast_left[y]
@@ -242,6 +295,8 @@ func _tile_for_cell(x: int, y: int) -> int:
 
 	var road_x: bool = x % ROAD_SPACING == 0
 	var road_y: bool = y % ROAD_SPACING == 0
+	var is_arterial: bool = _is_primary_arterial(x, y)
+	var on_ring_road: bool = _is_ring_road(x, y)
 	var tile: int = TILE_GRASS
 	if road_x and road_y:
 		tile = (
@@ -253,8 +308,8 @@ func _tile_for_cell(x: int, y: int) -> int:
 		tile = TILE_AVENUE_Y if x % AVENUE_SPACING == 0 else TILE_ROAD_Y
 	elif road_y:
 		tile = TILE_AVENUE_X if y % CROSS_STREET_SPACING == 0 else TILE_ROAD_X
-	elif x == _broadway_x_at(y):
-		tile = TILE_BROADWAY
+	elif is_arterial or on_ring_road:
+		tile = TILE_ARTERIAL
 	elif x % ROAD_SPACING == 1 or x % ROAD_SPACING == ROAD_SPACING - 1:
 		tile = TILE_SIDEWALK
 	elif y % ROAD_SPACING == 1 or y % ROAD_SPACING == ROAD_SPACING - 1:
@@ -311,8 +366,9 @@ func _make_tile_atlas() -> Image:
 	_paint_iso_tile(image, TILE_AVENUE_X, Color("#303f4a"), Color("#1d2d38"), 9)
 	_paint_iso_tile(image, TILE_AVENUE_Y, Color("#303f4a"), Color("#1d2d38"), 10)
 	_paint_iso_tile(image, TILE_AVENUE_INTERSECTION, Color("#3a4850"), Color("#1d2d38"), 11)
-	_paint_iso_tile(image, TILE_BROADWAY, Color("#39454b"), Color("#20313a"), 12)
+	_paint_iso_tile(image, TILE_ARTERIAL, Color("#39454b"), Color("#20313a"), 12)
 	_paint_iso_tile(image, TILE_BRIDGE, Color("#55646a"), Color("#283941"), 13)
+	_paint_iso_tile(image, TILE_DOCK, Color("#9a7756"), Color("#4e4b42"), 14)
 	return image
 
 
@@ -361,6 +417,8 @@ func _paint_iso_tile(
 				color = base_color.lightened(0.06)
 			elif detail_kind == 13 and (x + y) % 11 == 0:
 				color = base_color.lightened(0.07)
+			elif detail_kind == 14 and (x % 12 == 0 or y % 10 == 0):
+				color = base_color.lightened(0.12)
 			image.set_pixel(offset_x + x, y, color)
 
 	if detail_kind == 2 or detail_kind == 9:
@@ -589,7 +647,9 @@ func _pick_free_cell(
 		var candidate := Vector2i(_rng.randi_range(min_x, max_x), _rng.randi_range(min_y, max_y))
 		if not _is_land(candidate.x, candidate.y) or _is_in_park(candidate.x, candidate.y):
 			continue
-		if candidate.x == _broadway_x_at(candidate.y):
+		if _is_primary_arterial(candidate.x, candidate.y):
+			continue
+		if _is_near_ring_road(candidate.x, candidate.y):
 			continue
 		var is_free: bool = true
 		for taken: Vector2i in occupied:
@@ -658,6 +718,20 @@ func _build_park_details() -> void:
 		_park_rect.position.y + int(_park_rect.size.y * 0.78)
 	)
 	_props.call("add_fountain", _cell_to_world(fountain_cell))
+
+
+func _build_harbor_details() -> void:
+	var harbor_y: int = int(_map_height * 0.29)
+	var harbor_left: int = _coast_left[harbor_y]
+	var crane_cell := Vector2i(harbor_left - 4, harbor_y)
+	_props.call("add_port_crane", _cell_to_world(crane_cell))
+	_props.call(
+		"add_shipping_container", _cell_to_world(crane_cell + Vector2i(2, 2)), Color("#c75f50")
+	)
+	_props.call(
+		"add_shipping_container", _cell_to_world(crane_cell + Vector2i(-2, -2)), Color("#557a8b")
+	)
+	_props.call("add_harbor_boat", _cell_to_world(Vector2i(harbor_left - 5, harbor_y + 5)))
 
 
 func _build_citizens() -> void:

@@ -9,22 +9,20 @@ A landscape-first Godot 4 mobile game prototype. The project is being built in t
 3. Choose a map size at the start. Tap **New City** in the top-right HUD to choose another size at any time.
 4. On a touchscreen, drag with one finger to pan and pinch with two fingers to zoom. On desktop, drag with the left mouse button and use the mouse wheel to zoom.
 
-The city is a new procedural, pixel-art-style interpretation of a Manhattan-like island: a dense orthogonal street grid, wider avenues, a bending Broadway, Central Park with a lake and paths, waterfront promenades, bridges, and a few civic landmarks. Blocks contain varied low-rise and high-rise buildings, trees, pedestrians, cars, taxis, buses, and delivery vans. This is **TheoTown-inspired in spirit only**: no TheoTown graphics, save files, or proprietary assets are used.
+The city uses an original pixel-art look inspired by a **TheoTown community island city**, not a real-world map. Its broad layout reference is **Secaton** by Kevin 421 Hung, listed in the TheoTown Center sandbox collection as an island city with roughly 208,000 inhabitants: [TheoTown Center map listing](https://sites.google.com/view/retrocitycenter/theotown/maps/sandboxfree-mode). The same archive labels a 2,800+-tile “Former Largest Map” as not recommended for mobile, so Hero Town does not use that oversized map.
+
+The old Secaton download link is no longer accessible from the archive, and the listing does not specify a reuse license. Hero Town therefore does **not** bundle or import a TheoTown save, screenshot, tileset, or exact street plan. It translates the public island-city concept into a new playable layout: irregular coast and inlets, waterfront roads, a ring route, mixed street grids, parks, a harbor district, and a denser central skyline. All game graphics are original procedural shapes.
 
 ### Selectable map sizes
 
-| Option | Grid | Maximum block slots |
-| --- | ---: | ---: |
-| District | 5 × 12 blocks | 60 |
-| Borough | 7 × 16 blocks | 112 |
-| Large City | 9 × 24 blocks | 216 |
-| Megacity | 11 × 30 blocks | 330 |
+| Option | Grid | Map tiles | Maximum block slots |
+| --- | ---: | ---: | ---: |
+| District | 6 × 8 blocks | 49 × 65 | 48 |
+| Borough | 9 × 12 blocks | 73 × 97 | 108 |
+| Large City | 12 × 18 blocks | 97 × 145 | 216 |
+| Megacity | 16 × 24 blocks | 129 × 193 | 384 |
 
-The shoreline and park leave some slots as water or green space, so the number of built city blocks is lower than the maximum. The default selection is **Large City**.
-
-## Map reference and attribution
-
-The layout reference is **“Manhattan NYC OpenStreetMap 2023-08-21.png” by OpenStreetMap**, published under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) via [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Manhattan_NYC_OpenStreetMap_2023-08-21.png). The underlying OpenStreetMap data is made available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/1-0/). The project adapts the broad island outline and street-plan ideas into an original fictional, playable isometric map; it does not include the reference image or import a TheoTown map/save.
+The shoreline and parks leave some slots as water or green space, so the number of built city blocks is lower than the maximum. The default selection is **Large City**; the largest option stays within a phone-oriented tile footprint rather than using the community archive's 2,800+-tile map.
 
 ## Android / phone testing
 
@@ -33,8 +31,8 @@ The project viewport is landscape-first and uses the GL Compatibility renderer f
 ## Step 1 acceptance check
 
 - Project opens to a map-size selection screen; **New City** opens it again while playing.
-- Each size generates a larger/smaller island map with its own coastline, Manhattan-style avenues and cross streets, Broadway-like diagonal, Central Park and bridges.
-- Dense city blocks include varied buildings, rooftop details, trees, landmarks, pedestrians, and several vehicle types.
+- Each size generates a mobile-sized island map with an irregular shoreline, bays, ring road, winding arterial routes, a harbor district, parks, landmarks, and dense city blocks.
+- Blocks include varied low-rise and high-rise buildings, rooftop details, trees, pedestrians, and cars, taxis, buses, and delivery vans.
 - One-finger drag pans; two-finger pinch zooms. Desktop mouse controls are also available.
 - The scene remains landscape on Android.
 

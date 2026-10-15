@@ -61,7 +61,7 @@ func _add_title_panel(root: Control) -> void:
 	column.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "A living, Manhattan-inspired city"
+	subtitle.text = "A living TheoTown-inspired island city"
 	subtitle.add_theme_font_size_override("font_size", 13)
 	subtitle.add_theme_color_override("font_color", Color("#91b5b5"))
 	column.add_child(subtitle)

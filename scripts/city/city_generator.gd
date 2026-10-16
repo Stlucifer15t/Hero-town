@@ -94,7 +94,8 @@ var _lake_rect: Rect2i = Rect2i()
 var _city_blocks: Array[Vector2i] = []
 var _landmark_blocks: Dictionary = {}
 var _hero_association_block: Vector2i = Vector2i(-1, -1)
-var _pedestrian_navigation: AStarGrid2D
+var _pedestrian_tile_ids: PackedInt32Array = PackedInt32Array()
+var _pedestrian_walkable: PackedByteArray = PackedByteArray()
 var _hero_association_visitor_count: int = 0
 
 
@@ -992,34 +993,35 @@ func _build_citizens() -> void:
 
 
 func _build_pedestrian_navigation() -> void:
-	_pedestrian_navigation = AStarGrid2D.new()
-	_pedestrian_navigation.region = Rect2i(Vector2i.ZERO, Vector2i(_map_width, _map_height))
-	_pedestrian_navigation.cell_size = Vector2.ONE
-	_pedestrian_navigation.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
-	_pedestrian_navigation.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
-	_pedestrian_navigation.default_estimate_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
-	_pedestrian_navigation.update()
-
+	var cell_count: int = _map_width * _map_height
+	_pedestrian_tile_ids.resize(cell_count)
+	_pedestrian_walkable.resize(cell_count)
+	_pedestrian_walkable.fill(0)
 	for y: int in range(_map_height):
 		for x: int in range(_map_width):
-			var cell := Vector2i(x, y)
+			var cell_index: int = y * _map_width + x
 			var tile: int = _tile_for_cell(x, y)
-			var is_blocked: bool = tile == TILE_WATER or tile == TILE_GRASS
-			_pedestrian_navigation.set_point_solid(cell, is_blocked)
-			if not is_blocked:
-				_pedestrian_navigation.set_point_weight_scale(
-					cell, _pedestrian_weight_for_tile(tile)
-				)
+			_pedestrian_tile_ids[cell_index] = tile
+			if tile != TILE_WATER and tile != TILE_GRASS:
+				_pedestrian_walkable[cell_index] = 1
 
 
-func _pedestrian_weight_for_tile(tile: int) -> float:
-	if tile in [TILE_SIDEWALK, TILE_PARK_PATH, TILE_PROMENADE]:
-		return 1.0
-	if tile in [TILE_PARK, TILE_DOCK, TILE_BRIDGE]:
-		return 1.35
-	if tile in [TILE_INTERSECTION, TILE_AVENUE_INTERSECTION]:
-		return 1.6
-	return 3.25
+func _is_pedestrian_cell_walkable(cell: Vector2i) -> bool:
+	if cell.x < 0 or cell.y < 0 or cell.x >= _map_width or cell.y >= _map_height:
+		return false
+	return _pedestrian_walkable[cell.y * _map_width + cell.x] != 0
+
+
+func _is_pedestrian_step_allowed(
+	current_tile: int, next_tile: int, step_x: int, step_y: int
+) -> bool:
+	if current_tile in [TILE_ROAD_X, TILE_AVENUE_X] or next_tile in [TILE_ROAD_X, TILE_AVENUE_X]:
+		if step_x != 0:
+			return false
+	if current_tile in [TILE_ROAD_Y, TILE_AVENUE_Y] or next_tile in [TILE_ROAD_Y, TILE_AVENUE_Y]:
+		if step_y != 0:
+			return false
+	return true
 
 
 func _block_sidewalk_cells(block: Vector2i) -> Array[Vector2i]:
@@ -1037,10 +1039,10 @@ func _pick_block_sidewalk_cell(block: Vector2i) -> Vector2i:
 	var candidates: Array[Vector2i] = _block_sidewalk_cells(block)
 	for _attempt: int in range(16):
 		var candidate: Vector2i = candidates[_rng.randi_range(0, candidates.size() - 1)]
-		if not _pedestrian_navigation.is_point_solid(candidate):
+		if _is_pedestrian_cell_walkable(candidate):
 			return candidate
 	for candidate: Vector2i in candidates:
-		if not _pedestrian_navigation.is_point_solid(candidate):
+		if _is_pedestrian_cell_walkable(candidate):
 			return candidate
 	return Vector2i(-1, -1)
 
@@ -1050,12 +1052,12 @@ func _landmark_entrance_cell(kind: String) -> Vector2i:
 		if str(_landmark_blocks[block]) != kind:
 			continue
 		var preferred := Vector2i(block.x + ROAD_SPACING / 2, block.y + ROAD_SPACING - 1)
-		if not _pedestrian_navigation.is_point_solid(preferred):
+		if _is_pedestrian_cell_walkable(preferred):
 			return preferred
 		var best_cell := Vector2i(-1, -1)
 		var best_distance: float = INF
 		for candidate: Vector2i in _block_sidewalk_cells(block):
-			if _pedestrian_navigation.is_point_solid(candidate):
+			if not _is_pedestrian_cell_walkable(candidate):
 				continue
 			var distance: float = Vector2(candidate - preferred).length_squared()
 			if distance < best_distance:
@@ -1140,17 +1142,59 @@ func _choose_citizen_destination(home_block: Vector2i, citizen_index: int) -> Di
 
 func _make_pedestrian_route(from_cell: Vector2i, to_cell: Vector2i) -> PackedVector2Array:
 	var route := PackedVector2Array()
-	if _pedestrian_navigation == null:
+	if not _is_pedestrian_cell_walkable(from_cell) or not _is_pedestrian_cell_walkable(to_cell):
 		return route
-	if (
-		_pedestrian_navigation.is_point_solid(from_cell)
-		or _pedestrian_navigation.is_point_solid(to_cell)
-	):
+
+	var cell_count: int = _map_width * _map_height
+	var start_id: int = from_cell.y * _map_width + from_cell.x
+	var destination_id: int = to_cell.y * _map_width + to_cell.x
+	var parent := PackedInt32Array()
+	parent.resize(cell_count)
+	parent.fill(-2)
+	parent[start_id] = -1
+	var frontier := PackedInt32Array()
+	frontier.append(start_id)
+	var direction_x: Array[int] = [-1, 1, 0, 0]
+	var direction_y: Array[int] = [0, 0, -1, 1]
+	var frontier_index: int = 0
+	var destination_reached: bool = false
+
+	while frontier_index < frontier.size():
+		var current_id: int = frontier[frontier_index]
+		frontier_index += 1
+		if current_id == destination_id:
+			destination_reached = true
+			break
+		var current_cell := Vector2i(current_id % _map_width, int(current_id / _map_width))
+		var current_tile: int = _pedestrian_tile_ids[current_id]
+		for direction_index: int in range(4):
+			var step_x: int = direction_x[direction_index]
+			var step_y: int = direction_y[direction_index]
+			var next_cell := current_cell + Vector2i(step_x, step_y)
+			if not _is_pedestrian_cell_walkable(next_cell):
+				continue
+			var next_id: int = next_cell.y * _map_width + next_cell.x
+			if parent[next_id] != -2:
+				continue
+			var next_tile: int = _pedestrian_tile_ids[next_id]
+			if not _is_pedestrian_step_allowed(current_tile, next_tile, step_x, step_y):
+				continue
+			parent[next_id] = current_id
+			frontier.append(next_id)
+
+	if not destination_reached:
 		return route
-	var cell_path: Array[Vector2i] = _pedestrian_navigation.get_id_path(from_cell, to_cell)
-	if cell_path.size() < 2:
+
+	var reverse_path := PackedInt32Array()
+	var path_id: int = destination_id
+	while path_id >= 0 and reverse_path.size() <= cell_count:
+		reverse_path.append(path_id)
+		path_id = parent[path_id]
+	if reverse_path.is_empty() or reverse_path[reverse_path.size() - 1] != start_id:
 		return route
-	for cell: Vector2i in cell_path:
+	for path_index: int in range(reverse_path.size() - 1, -1, -1):
+		var cell_id: int = reverse_path[path_index]
+		var cell := Vector2i(cell_id % _map_width, int(cell_id / _map_width))
 		route.append(_cell_to_world(cell))
 	return route
 

@@ -46,8 +46,7 @@ func _run() -> void:
 					"name": "Test Nova",
 					"suit_color": "#45bcae",
 					"cape_color": "#e7645d",
-					"powers":
-					["elemental", "super_strength", "speed", "teleportation", "beast", "flight"],
+					"powers": ["elemental", "super_strength", "speed"],
 					"element": "fire",
 				},
 				null
@@ -80,6 +79,7 @@ func _run() -> void:
 			hero.call("set_virtual_movement", Vector2.ZERO)
 
 	if failure.is_empty():
+		hero.call("configure", {"name": "Test Nova", "powers": ["teleportation"]}, null)
 		var before_teleport: Vector2 = hero.global_position
 		if not bool(hero.call("activate_power", "teleportation")):
 			failure = "Teleportation did not activate."
@@ -87,6 +87,7 @@ func _run() -> void:
 			failure = "Teleportation did not blink the hero forward."
 
 	if failure.is_empty():
+		hero.call("configure", {"name": "Test Nova", "powers": ["beast", "flight"]}, null)
 		if not bool(hero.call("activate_power", "beast")):
 			failure = "Beast Form did not activate."
 		elif not bool(hero.call("is_power_active", "beast")):

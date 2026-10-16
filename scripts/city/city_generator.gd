@@ -205,6 +205,34 @@ func get_hero_association_visitor_count() -> int:
 	return _hero_association_visitor_count
 
 
+func get_hero_spawn_data() -> Dictionary:
+	var entrance: Vector2i = _landmark_entrance_cell("hero_association")
+	if entrance.x < 0:
+		return {"spawn": get_map_center(), "training_targets": []}
+	var training_positions: Array[Vector2] = []
+	for offset: int in [-2, 2]:
+		var target_cell := entrance + Vector2i(offset, 0)
+		if _is_pedestrian_cell_walkable(target_cell):
+			training_positions.append(_cell_to_world(target_cell))
+	return {
+		"spawn": _cell_to_world(entrance),
+		"training_targets": training_positions,
+	}
+
+
+func can_hero_occupy(world_position: Vector2, flying: bool = false) -> bool:
+	var cell: Vector2i = _world_to_cell(world_position)
+	if cell.x < 0 or cell.y < 0 or cell.x >= _map_width or cell.y >= _map_height:
+		return false
+	return flying or _is_pedestrian_cell_walkable(cell)
+
+
+func _world_to_cell(world_position: Vector2) -> Vector2i:
+	if _ground == null:
+		return Vector2i(-1, -1)
+	return _ground.local_to_map(_ground.to_local(world_position))
+
+
 func _build_coastline() -> void:
 	_coast_left.clear()
 	_coast_right.clear()

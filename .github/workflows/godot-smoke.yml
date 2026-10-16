@@ -88,6 +88,9 @@ jobs:
       - name: Run city generation smoke test
         run: "$GODOT_BIN --headless --path . --script res://tests/city_smoke_test.gd"
 
+      - name: Run hero powers smoke test
+        run: "$GODOT_BIN --headless --path . --script res://tests/hero_smoke_test.gd"
+
       - name: Export debug APK
         run: |
           mkdir -p build/android

@@ -99,6 +99,9 @@ func _run() -> void:
 
 	var elemental_target: Node2D
 	if failure.is_empty():
+		hero.call(
+			"configure", {"name": "Test Nova", "powers": ["elemental"], "element": "fire"}, null
+		)
 		elemental_target = HeroTrainingTarget.new()
 		elemental_target.name = "ElementalTestTarget"
 		root.add_child(elemental_target)

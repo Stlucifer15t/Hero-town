@@ -438,6 +438,7 @@ func _build_ground() -> void:
 
 	for y: int in range(-2, _map_height + 2):
 		for x: int in range(-2, _map_width + 2):
+			var cell := Vector2i(x, y)
 			var base_tile: int = _tile_for_cell(x, y)
 			_ground.set_cell(cell, 0, Vector2i(_tile_art_variant(x, y, base_tile), 0))
 

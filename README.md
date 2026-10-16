@@ -26,7 +26,7 @@ The shoreline and parks leave some slots as water or green space, so the number 
 
 ### Art direction and mobile rendering
 
-The starter building atlas contains original townhouse, shop, apartment, and mid-rise art; it is not copied from TheoTown. For this phone-test slice, the richer sprites, varied ground textures, and larger walkers are limited to a centered neighborhood of up to 7 × 8 blocks, framed by the closer default camera. The rest of a large map keeps its earlier procedural look until the user tests this slice. Static buildings share one renderer and texture atlas, the ground remains a `TileMapLayer`, and pedestrians/vehicles pause their movement updates when off-screen. Walker and vehicle counts are capped to keep the Android update budget bounded. Actual frame pacing still needs confirmation on a phone.
+The starter building atlas contains original townhouse, shop, apartment, and mid-rise art; it is not copied from TheoTown. The ground now uses several deterministic tile treatments across the whole island: mottled grass, paving seams, water ripples, road wear, and alternate intersections. Procedural facades add occasional balconies and rooftop equipment. Curated sprite buildings and larger walkers stay concentrated in a centered neighborhood of up to 7 × 8 blocks to protect phone performance. Residents follow sidewalk-aware routes between home and named destinations, including a dedicated Hero Association headquarters that visitors can navigate to from the HUD. Static buildings share one renderer and texture atlas, the ground remains a `TileMapLayer`, and pedestrians/vehicles pause their movement updates when off-screen. Walker and vehicle counts are capped to keep the Android update budget bounded. Actual frame pacing still needs confirmation on a phone.
 
 ## Android / phone testing
 
@@ -36,7 +36,8 @@ The project viewport is landscape-first and uses the GL Compatibility renderer f
 
 - Project opens to a map-size selection screen; **New City** opens it again while playing.
 - Each size generates a mobile-sized island map with an irregular shoreline, bays, ring road, winding arterial routes, a harbor district, parks, landmarks, and dense city blocks.
-- Blocks include varied low-rise and high-rise buildings, rooftop details, trees, pedestrians, and cars, taxis, buses, and delivery vans.
+- Blocks include varied low-rise and high-rise buildings, rooftop details, trees, pedestrians, and cars, taxis, buses, and delivery vans. City-wide ground tiles vary with subtle grass, paving, water, and road texture.
+- Residents walk to named destinations and return home instead of endlessly circling one block. The Hero Association headquarters draws regular visitors and the **Hero HQ** HUD button centers the camera on it.
 - One-finger drag pans; two-finger pinch zooms. Desktop mouse controls are also available.
 - The scene remains landscape on Android.
 

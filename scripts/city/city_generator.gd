@@ -57,7 +57,20 @@ const TILE_GRASS_VARIANT: int = 15
 const TILE_PARK_VARIANT: int = 16
 const TILE_WATER_VARIANT: int = 17
 const TILE_SIDEWALK_VARIANT: int = 18
-const TILE_COUNT: int = 19
+const TILE_GRASS_VARIANT_2: int = 19
+const TILE_SIDEWALK_VARIANT_2: int = 20
+const TILE_ROAD_X_VARIANT: int = 21
+const TILE_ROAD_Y_VARIANT: int = 22
+const TILE_AVENUE_X_VARIANT: int = 23
+const TILE_AVENUE_Y_VARIANT: int = 24
+const TILE_INTERSECTION_VARIANT: int = 25
+const TILE_AVENUE_INTERSECTION_VARIANT: int = 26
+const TILE_ARTERIAL_VARIANT: int = 27
+const TILE_PARK_VARIANT_2: int = 28
+const TILE_WATER_VARIANT_2: int = 29
+const TILE_PARK_PATH_VARIANT: int = 30
+const TILE_PROMENADE_VARIANT: int = 31
+const TILE_COUNT: int = 32
 
 var _rng := RandomNumberGenerator.new()
 var _ground: TileMapLayer
@@ -79,6 +92,10 @@ var _coast_right: Array[int] = []
 var _park_rect: Rect2i = Rect2i()
 var _lake_rect: Rect2i = Rect2i()
 var _city_blocks: Array[Vector2i] = []
+var _landmark_blocks: Dictionary = {}
+var _hero_association_block: Vector2i = Vector2i(-1, -1)
+var _pedestrian_navigation: AStarGrid2D
+var _hero_association_visitor_count: int = 0
 
 
 static func get_map_presets() -> Array[Dictionary]:
@@ -170,6 +187,21 @@ func get_park_bounds() -> Rect2i:
 
 func get_park_center_cell() -> Vector2i:
 	return _park_rect.position + _park_rect.size / 2
+
+
+func get_hero_association_block() -> Vector2i:
+	return _hero_association_block
+
+
+func get_hero_association_position() -> Vector2:
+	if _hero_association_block.x < 0:
+		return Vector2.ZERO
+	var center_cell := _hero_association_block + Vector2i(ROAD_SPACING / 2, ROAD_SPACING / 2)
+	return _cell_to_world(center_cell) - Vector2(0.0, 82.0)
+
+
+func get_hero_association_visitor_count() -> int:
+	return _hero_association_visitor_count
 
 
 func _build_coastline() -> void:
@@ -338,14 +370,47 @@ func _tile_for_cell(x: int, y: int) -> int:
 
 func _tile_art_variant(x: int, y: int, base_tile: int) -> int:
 	var texture_roll: int = posmod(x * 37 + y * 73 + x * y * 11, 100)
-	if base_tile == TILE_GRASS and texture_roll < 27:
-		return TILE_GRASS_VARIANT
-	if base_tile == TILE_PARK and texture_roll < 38:
-		return TILE_PARK_VARIANT
-	if base_tile == TILE_WATER and texture_roll < 30:
-		return TILE_WATER_VARIANT
-	if base_tile == TILE_SIDEWALK and texture_roll < 24:
-		return TILE_SIDEWALK_VARIANT
+	var texture_style: int = posmod(x * 19 + y * 29 + x * y * 3, 2)
+	match base_tile:
+		TILE_GRASS:
+			if texture_roll < 38:
+				return TILE_GRASS_VARIANT_2 if texture_style == 0 else TILE_GRASS_VARIANT
+		TILE_PARK:
+			if texture_roll < 42:
+				return TILE_PARK_VARIANT_2 if texture_style == 0 else TILE_PARK_VARIANT
+		TILE_WATER:
+			if texture_roll < 34:
+				return TILE_WATER_VARIANT_2 if texture_style == 0 else TILE_WATER_VARIANT
+		TILE_SIDEWALK:
+			if texture_roll < 32:
+				return TILE_SIDEWALK_VARIANT_2 if texture_style == 0 else TILE_SIDEWALK_VARIANT
+		TILE_ROAD_X:
+			if texture_roll < 17:
+				return TILE_ROAD_X_VARIANT
+		TILE_ROAD_Y:
+			if texture_roll < 17:
+				return TILE_ROAD_Y_VARIANT
+		TILE_AVENUE_X:
+			if texture_roll < 17:
+				return TILE_AVENUE_X_VARIANT
+		TILE_AVENUE_Y:
+			if texture_roll < 17:
+				return TILE_AVENUE_Y_VARIANT
+		TILE_INTERSECTION:
+			if texture_roll < 28:
+				return TILE_INTERSECTION_VARIANT
+		TILE_AVENUE_INTERSECTION:
+			if texture_roll < 28:
+				return TILE_AVENUE_INTERSECTION_VARIANT
+		TILE_ARTERIAL:
+			if texture_roll < 20:
+				return TILE_ARTERIAL_VARIANT
+		TILE_PARK_PATH:
+			if texture_roll < 34:
+				return TILE_PARK_PATH_VARIANT
+		TILE_PROMENADE:
+			if texture_roll < 26:
+				return TILE_PROMENADE_VARIANT
 	return base_tile
 
 
@@ -372,12 +437,8 @@ func _build_ground() -> void:
 
 	for y: int in range(-2, _map_height + 2):
 		for x: int in range(-2, _map_width + 2):
-			var cell := Vector2i(x, y)
 			var base_tile: int = _tile_for_cell(x, y)
-			var art_tile: int = base_tile
-			if _visual_neighborhood_rect.has_point(cell):
-				art_tile = _tile_art_variant(x, y, base_tile)
-			_ground.set_cell(cell, 0, Vector2i(art_tile, 0))
+			_ground.set_cell(cell, 0, Vector2i(_tile_art_variant(x, y, base_tile), 0))
 
 	_props = CityPropsRenderer.new()
 	_props.name = "StaticProps"
@@ -408,6 +469,19 @@ func _make_tile_atlas() -> Image:
 	_paint_iso_tile(image, TILE_PARK_VARIANT, Color("#5a9b66"), Color("#397451"), 16)
 	_paint_iso_tile(image, TILE_WATER_VARIANT, Color("#438b96"), Color("#2f6975"), 17)
 	_paint_iso_tile(image, TILE_SIDEWALK_VARIANT, Color("#b9b096"), Color("#988f7a"), 18)
+	_paint_iso_tile(image, TILE_GRASS_VARIANT_2, Color("#437a5a"), Color("#2a5144"), 19)
+	_paint_iso_tile(image, TILE_SIDEWALK_VARIANT_2, Color("#ada58d"), Color("#817d70"), 20)
+	_paint_iso_tile(image, TILE_ROAD_X_VARIANT, Color("#3b4950"), Color("#202e37"), 21)
+	_paint_iso_tile(image, TILE_ROAD_Y_VARIANT, Color("#3b4950"), Color("#202e37"), 22)
+	_paint_iso_tile(image, TILE_AVENUE_X_VARIANT, Color("#35444b"), Color("#1d2b34"), 23)
+	_paint_iso_tile(image, TILE_AVENUE_Y_VARIANT, Color("#35444b"), Color("#1d2b34"), 24)
+	_paint_iso_tile(image, TILE_INTERSECTION_VARIANT, Color("#465258"), Color("#202f39"), 25)
+	_paint_iso_tile(image, TILE_AVENUE_INTERSECTION_VARIANT, Color("#414e54"), Color("#1d2c36"), 26)
+	_paint_iso_tile(image, TILE_ARTERIAL_VARIANT, Color("#414c50"), Color("#24323a"), 27)
+	_paint_iso_tile(image, TILE_PARK_VARIANT_2, Color("#579364"), Color("#356d50"), 28)
+	_paint_iso_tile(image, TILE_WATER_VARIANT_2, Color("#488b95"), Color("#2f6471"), 29)
+	_paint_iso_tile(image, TILE_PARK_PATH_VARIANT, Color("#c4b58e"), Color("#766b57"), 30)
+	_paint_iso_tile(image, TILE_PROMENADE_VARIANT, Color("#b2ad95"), Color("#636763"), 31)
 	return image
 
 
@@ -423,77 +497,94 @@ func _paint_iso_tile(
 			var edge_distance: int = mini(
 				mini(x - left, right_exclusive - 1 - x), mini(y, TILE_SIZE - 1 - y)
 			)
-			var color: Color = base_color
-			if edge_distance <= 1:
-				color = edge_color
-			elif detail_kind == 0:
-				var fleck: int = (x * 19 + y * 13 + tile_index * 7) % 101
-				if fleck == 0:
-					color = base_color.lightened(0.25)
-				elif fleck == 1:
-					color = base_color.darkened(0.20)
-				elif (x + y * 2) % 37 == 0:
-					color = Color("#75a76b")
-				elif (x * 3 + y) % 53 == 0:
-					color = Color("#2e684f")
-			elif detail_kind == 1 and (x % 16 == 0 or y % 16 == 0):
-				color = base_color.lightened(0.08)
-			elif detail_kind == 5:
-				if (x + 2 * y) % 47 == 0:
-					color = base_color.lightened(0.19)
-				elif (x * 3 + y) % 71 == 0:
-					color = base_color.darkened(0.15)
-			elif detail_kind == 6:
-				if (x * 7 + y * 11) % 61 == 0:
-					color = base_color.lightened(0.16)
-				elif (x + y * 3) % 79 == 0:
-					color = base_color.darkened(0.15)
-			elif detail_kind == 7 and (x % 14 == 0 or y % 14 == 0):
-				color = base_color.lightened(0.12)
-			elif detail_kind == 8 and (y % 11 == 0):
-				color = base_color.lightened(0.08)
-			elif detail_kind in [9, 10, 11, 12] and (x + y) % 67 == 0:
-				color = base_color.lightened(0.06)
-			elif detail_kind == 13 and (x + y) % 11 == 0:
-				color = base_color.lightened(0.07)
-			elif detail_kind == 14 and (x % 12 == 0 or y % 10 == 0):
-				color = base_color.lightened(0.12)
-			elif detail_kind == 15:
-				if (x * 17 + y * 29) % 47 == 0:
-					color = Color("#86a96a")
-				elif (x + y * 3) % 71 == 0:
-					color = Color("#376e51")
-			elif detail_kind == 16:
-				if (x * 11 + y * 19) % 97 == 0:
-					color = Color("#dbd18a")
-				elif (x * 7 + y * 13) % 89 == 0:
-					color = Color("#8bbd73")
-			elif detail_kind == 17:
-				if (x + y * 2) % 31 == 0:
-					color = base_color.lightened(0.16)
-				elif (x * 2 + y) % 67 == 0:
-					color = base_color.darkened(0.11)
-			elif detail_kind == 18 and (x % 12 == 0 or y % 12 == 0):
-				color = base_color.lightened(0.07)
+			var color: Color = (
+				edge_color
+				if edge_distance <= 1
+				else _tile_detail_color(x, y, tile_index, base_color, detail_kind)
+			)
 			image.set_pixel(offset_x + x, y, color)
 
-	if detail_kind == 2 or detail_kind == 9:
-		_paint_road_dash(image, offset_x, 1)
-	elif detail_kind == 3 or detail_kind == 10:
-		_paint_road_dash(image, offset_x, -1)
-	elif detail_kind == 4 or detail_kind == 11:
-		_paint_road_dash(image, offset_x, 1)
-		_paint_road_dash(image, offset_x, -1)
-		_paint_crosswalk(image, offset_x)
-	elif detail_kind == 12:
-		_paint_road_dash(image, offset_x, 1)
-		_paint_road_dash(image, offset_x, -1)
-	elif detail_kind == 13:
-		for stripe: int in range(-13, 14, 6):
-			for thickness: int in range(-1, 2):
-				_set_atlas_pixel(
-					image, offset_x + 32 + stripe + thickness, 31 + stripe, Color("#abb4ad")
-				)
+	match detail_kind:
+		2, 9, 21, 23:
+			_paint_road_dash(image, offset_x, 1)
+			if detail_kind in [9, 23]:
+				_paint_road_dash(image, offset_x, -1)
+		3, 10, 22, 24:
+			_paint_road_dash(image, offset_x, -1)
+		4, 11, 25, 26:
+			_paint_road_dash(image, offset_x, 1)
+			_paint_road_dash(image, offset_x, -1)
+			_paint_crosswalk(image, offset_x)
+		12, 27:
+			_paint_road_dash(image, offset_x, 1)
+			_paint_road_dash(image, offset_x, -1)
+		13:
+			for stripe: int in range(-13, 14, 6):
+				for thickness: int in range(-1, 2):
+					_set_atlas_pixel(
+						image, offset_x + 32 + stripe + thickness, 31 + stripe, Color("#abb4ad")
+					)
+
+
+func _tile_detail_color(
+	x: int, y: int, tile_index: int, base_color: Color, detail_kind: int
+) -> Color:
+	var color: Color = base_color
+	match detail_kind:
+		0, 15, 19:
+			if (x * 17 + y * 29 + tile_index) % 53 == 0:
+				color = base_color.lightened(0.23)
+			elif (x * 7 + y * 13 + tile_index) % 47 == 0:
+				color = base_color.darkened(0.18)
+			elif (x + y * 2) % 37 == 0:
+				color = Color("#75a76b") if detail_kind != 19 else Color("#8db276")
+			elif detail_kind == 19 and (x * 3 + y * 5) % 41 == 0:
+				color = Color("#d6ca87")
+		1, 18, 20:
+			if x % 16 == 0 or y % 16 == 0:
+				color = base_color.lightened(0.09)
+			elif (x * 5 + y * 3 + tile_index) % 67 == 0:
+				color = base_color.darkened(0.13)
+			elif detail_kind == 20 and (x + 2 * y) % 43 == 0:
+				color = Color("#77796f")
+		5, 17, 29:
+			if (x + 2 * y + tile_index) % 31 < 2:
+				color = base_color.lightened(0.19)
+			elif (x * 3 + y + tile_index) % 59 == 0:
+				color = base_color.darkened(0.15)
+			elif detail_kind == 29 and (x + y * 3) % 47 == 0:
+				color = Color("#82b8b0")
+		6, 16, 28:
+			if (x * 7 + y * 11 + tile_index) % 61 == 0:
+				color = base_color.lightened(0.17)
+			elif (x + y * 3) % 79 == 0:
+				color = base_color.darkened(0.14)
+			elif detail_kind == 28 and (x * 13 + y * 5) % 73 == 0:
+				color = Color("#e1d58d")
+		7, 30:
+			if x % 14 == 0 or y % 14 == 0:
+				color = base_color.lightened(0.13)
+			elif (x * 11 + y * 7) % 71 == 0:
+				color = base_color.darkened(0.11)
+		8, 31:
+			if y % 11 == 0:
+				color = base_color.lightened(0.09)
+			elif (x * 5 + y * 13) % 67 == 0:
+				color = base_color.darkened(0.11)
+		2, 3, 4, 9, 10, 11, 12, 21, 22, 23, 24, 25, 26, 27:
+			if (x * 13 + y * 7 + tile_index * 3) % 83 == 0:
+				color = base_color.lightened(0.16)
+			elif (x + y * 2 + tile_index) % 61 == 0:
+				color = base_color.darkened(0.12)
+			elif detail_kind in [21, 22, 25, 26] and (x + y) % 29 == 0:
+				color = Color("#4d595b")
+		13:
+			if (x + y) % 11 == 0:
+				color = base_color.lightened(0.07)
+		14:
+			if x % 12 == 0 or y % 10 == 0:
+				color = base_color.lightened(0.12)
+	return color
 
 
 func _paint_crosswalk(image: Image, offset_x: int) -> void:
@@ -546,15 +637,19 @@ func _collect_city_blocks() -> void:
 
 func _get_landmark_blocks() -> Dictionary:
 	var chosen: Dictionary = {}
+	_hero_association_block = Vector2i(-1, -1)
 	if _city_blocks.is_empty():
 		return chosen
 
 	var landmark_targets: Array[Dictionary] = [
+		{"kind": "hero_association", "cell": Vector2i(_map_width / 2, int(_map_height * 0.53))},
 		{"kind": "station", "cell": Vector2i(_map_width / 2 + 8, int(_map_height * 0.24))},
-		{"kind": "tower", "cell": Vector2i(_map_width / 2, int(_map_height * 0.53))},
-		{"kind": "civic", "cell": Vector2i(_map_width / 2 - 8, int(_map_height * 0.75))},
+		{"kind": "tower", "cell": Vector2i(_map_width / 2, int(_map_height * 0.77))},
+		{"kind": "civic", "cell": Vector2i(_map_width / 2 - 8, int(_map_height * 0.74))},
 	]
 	for target: Dictionary in landmark_targets:
+		if chosen.size() >= _city_blocks.size():
+			break
 		var target_cell: Vector2i = target["cell"]
 		var best_block: Vector2i = _city_blocks[0]
 		var best_distance: float = INF
@@ -566,13 +661,16 @@ func _get_landmark_blocks() -> Dictionary:
 			if distance < best_distance:
 				best_distance = distance
 				best_block = block
-		chosen[best_block] = str(target["kind"])
+		var kind: String = str(target["kind"])
+		chosen[best_block] = kind
+		if kind == "hero_association":
+			_hero_association_block = best_block
 	return chosen
 
 
 func _build_city_blocks() -> void:
 	_collect_city_blocks()
-	var landmark_blocks: Dictionary = _get_landmark_blocks()
+	_landmark_blocks = _get_landmark_blocks()
 	var wall_palette: Array[Color] = [
 		Color("#c58469"),
 		Color("#baaa83"),
@@ -607,8 +705,8 @@ func _build_city_blocks() -> void:
 		var max_x: int = mini(block.x + ROAD_SPACING - 2, _map_width - 2)
 		var min_y: int = block.y + 2
 		var max_y: int = mini(block.y + ROAD_SPACING - 2, _map_height - 2)
-		if landmark_blocks.has(block):
-			_add_landmark(block, str(landmark_blocks[block]))
+		if _landmark_blocks.has(block):
+			_add_landmark(block, str(_landmark_blocks[block]))
 			continue
 
 		var block_center := Vector2i(block.x + ROAD_SPACING / 2, block.y + ROAD_SPACING / 2)
@@ -688,17 +786,23 @@ func _build_city_blocks() -> void:
 
 func _add_landmark(block: Vector2i, kind: String) -> void:
 	var palette: Dictionary = {
+		"hero_association": {"wall": Color("#728ba0"), "roof": Color("#d6bd73"), "height": 178.0},
 		"station": {"wall": Color("#bd9a68"), "roof": Color("#536d70"), "height": 82.0},
 		"tower": {"wall": Color("#7899a1"), "roof": Color("#c6d3d1"), "height": 244.0},
 		"civic": {"wall": Color("#d1b985"), "roof": Color("#8f604d"), "height": 126.0},
 	}
 	var style: Dictionary = palette.get(kind, palette["civic"])
 	var cell := Vector2i(block.x + ROAD_SPACING / 2, block.y + ROAD_SPACING / 2)
+	var width: float = 78.0 if kind == "hero_association" else 66.0
+	var depth: float = 54.0 if kind == "hero_association" else 43.0
+	if kind == "tower":
+		width = 57.0
+		depth = 38.0
 	_props.call(
 		"add_landmark",
 		_cell_to_world(cell),
-		66.0 if kind != "tower" else 57.0,
-		43.0 if kind != "tower" else 38.0,
+		width,
+		depth,
 		float(style["height"]),
 		style["wall"],
 		style["roof"],
@@ -809,10 +913,12 @@ func _build_harbor_details() -> void:
 
 
 func _build_citizens() -> void:
+	_build_pedestrian_navigation()
 	_population = Node2D.new()
 	_population.name = "Population"
 	_population.z_index = 2
 	add_child(_population)
+	_hero_association_visitor_count = 0
 
 	var shirt_colors: Array[Color] = [
 		Color("#e77d64"),
@@ -842,12 +948,28 @@ func _build_citizens() -> void:
 		pedestrian_blocks.size(), clampi(int(roundf(float(_city_block_count) * 0.72)), 20, 128)
 	)
 	for block_index: int in range(citizen_budget):
-		var block: Vector2i = pedestrian_blocks[block_index]
-		var block_center := Vector2i(block.x + ROAD_SPACING / 2, block.y + ROAD_SPACING / 2)
+		var home_block: Vector2i = pedestrian_blocks[block_index]
+		var block_center := Vector2i(
+			home_block.x + ROAD_SPACING / 2, home_block.y + ROAD_SPACING / 2
+		)
 		var in_visual_neighborhood: bool = _visual_neighborhood_rect.has_point(block_center)
-		var route: PackedVector2Array = _make_block_sidewalk_route(block.x, block.y)
-		if route.size() < 4:
+		var home_cell: Vector2i = _pick_block_sidewalk_cell(home_block)
+		if home_cell.x < 0:
 			continue
+		var destination: Dictionary = _choose_citizen_destination(home_block, block_index)
+		var destination_cell: Vector2i = destination["cell"]
+		var route: PackedVector2Array = _make_pedestrian_route(home_cell, destination_cell)
+		if route.size() < 2:
+			var alternate_home: Vector2i = _pick_block_sidewalk_cell(home_block)
+			if alternate_home.x >= 0 and alternate_home != home_cell:
+				home_cell = alternate_home
+				route = _make_pedestrian_route(home_cell, destination_cell)
+		if route.size() < 2:
+			continue
+		var trip_length: float = _open_route_length(route)
+		if trip_length <= 1.0:
+			continue
+
 		var citizen: Node2D = CityCitizen.new()
 		citizen.name = "Citizen_%03d" % _citizen_count
 		citizen.call(
@@ -858,33 +980,186 @@ func _build_citizens() -> void:
 			trouser_colors[_rng.randi_range(0, trouser_colors.size() - 1)],
 			Color("#f0b88d") if _rng.randf() < 0.68 else Color("#9c654e"),
 			Color("#382c35") if _rng.randf() < 0.78 else Color("#c88a52"),
-			_rng.randf_range(0.0, _route_length(route)),
-			in_visual_neighborhood
+			_rng.randf_range(0.0, trip_length),
+			in_visual_neighborhood,
+			str(destination["name"]),
+			str(destination["kind"])
 		)
 		_population.add_child(citizen)
+		if str(destination["kind"]) == "hero_association":
+			_hero_association_visitor_count += 1
 		_citizen_count += 1
 
 
-func _make_block_sidewalk_route(block_x: int, block_y: int) -> PackedVector2Array:
-	var left: int = block_x + 1
-	var right: int = mini(block_x + ROAD_SPACING - 1, _map_width - 2)
-	var top: int = block_y + 1
-	var bottom: int = mini(block_y + ROAD_SPACING - 1, _map_height - 2)
+func _build_pedestrian_navigation() -> void:
+	_pedestrian_navigation = AStarGrid2D.new()
+	_pedestrian_navigation.region = Rect2i(Vector2i.ZERO, Vector2i(_map_width, _map_height))
+	_pedestrian_navigation.cell_size = Vector2.ONE
+	_pedestrian_navigation.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_NEVER
+	_pedestrian_navigation.default_compute_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
+	_pedestrian_navigation.default_estimate_heuristic = AStarGrid2D.HEURISTIC_MANHATTAN
+	_pedestrian_navigation.update()
+
+	for y: int in range(_map_height):
+		for x: int in range(_map_width):
+			var cell := Vector2i(x, y)
+			var tile: int = _tile_for_cell(x, y)
+			var is_blocked: bool = tile == TILE_WATER or tile == TILE_GRASS
+			_pedestrian_navigation.set_point_solid(cell, is_blocked)
+			if not is_blocked:
+				_pedestrian_navigation.set_point_weight_scale(
+					cell, _pedestrian_weight_for_tile(tile)
+				)
+
+
+func _pedestrian_weight_for_tile(tile: int) -> float:
+	if tile in [TILE_SIDEWALK, TILE_PARK_PATH, TILE_PROMENADE]:
+		return 1.0
+	if tile in [TILE_PARK, TILE_DOCK, TILE_BRIDGE]:
+		return 1.35
+	if tile in [TILE_INTERSECTION, TILE_AVENUE_INTERSECTION]:
+		return 1.6
+	return 3.25
+
+
+func _block_sidewalk_cells(block: Vector2i) -> Array[Vector2i]:
 	var cells: Array[Vector2i] = []
+	for offset: int in range(1, ROAD_SPACING):
+		cells.append(Vector2i(block.x + offset, block.y + 1))
+		cells.append(Vector2i(block.x + offset, block.y + ROAD_SPACING - 1))
+		if offset < ROAD_SPACING - 1:
+			cells.append(Vector2i(block.x + 1, block.y + offset))
+			cells.append(Vector2i(block.x + ROAD_SPACING - 1, block.y + offset))
+	return cells
 
-	for x: int in range(left, right + 1):
-		cells.append(Vector2i(x, top))
-	for y: int in range(top + 1, bottom + 1):
-		cells.append(Vector2i(right, y))
-	for x: int in range(right - 1, left - 1, -1):
-		cells.append(Vector2i(x, bottom))
-	for y: int in range(bottom - 1, top, -1):
-		cells.append(Vector2i(left, y))
 
+func _pick_block_sidewalk_cell(block: Vector2i) -> Vector2i:
+	var candidates: Array[Vector2i] = _block_sidewalk_cells(block)
+	for _attempt: int in range(16):
+		var candidate: Vector2i = candidates[_rng.randi_range(0, candidates.size() - 1)]
+		if not _pedestrian_navigation.is_point_solid(candidate):
+			return candidate
+	for candidate: Vector2i in candidates:
+		if not _pedestrian_navigation.is_point_solid(candidate):
+			return candidate
+	return Vector2i(-1, -1)
+
+
+func _landmark_entrance_cell(kind: String) -> Vector2i:
+	for block: Vector2i in _landmark_blocks:
+		if str(_landmark_blocks[block]) != kind:
+			continue
+		var preferred := Vector2i(block.x + ROAD_SPACING / 2, block.y + ROAD_SPACING - 1)
+		if not _pedestrian_navigation.is_point_solid(preferred):
+			return preferred
+		var best_cell := Vector2i(-1, -1)
+		var best_distance: float = INF
+		for candidate: Vector2i in _block_sidewalk_cells(block):
+			if _pedestrian_navigation.is_point_solid(candidate):
+				continue
+			var distance: float = Vector2(candidate - preferred).length_squared()
+			if distance < best_distance:
+				best_distance = distance
+				best_cell = candidate
+		return best_cell
+	return Vector2i(-1, -1)
+
+
+func _park_destination_cell() -> Vector2i:
+	var target := _park_rect.position + _park_rect.size / 2
+	var best_cell := Vector2i(-1, -1)
+	var best_distance: float = INF
+	for y: int in range(_park_rect.position.y, _park_rect.position.y + _park_rect.size.y):
+		for x: int in range(_park_rect.position.x, _park_rect.position.x + _park_rect.size.x):
+			if _tile_for_cell(x, y) != TILE_PARK_PATH:
+				continue
+			var cell := Vector2i(x, y)
+			var distance: float = Vector2(cell - target).length_squared()
+			if distance < best_distance:
+				best_distance = distance
+				best_cell = cell
+	return best_cell
+
+
+func _harbor_destination_cell() -> Vector2i:
+	var harbor_y: int = int(_map_height * 0.29)
+	var best_cell := Vector2i(-1, -1)
+	var best_distance: float = INF
+	for y: int in range(maxi(0, harbor_y - 3), mini(_map_height, harbor_y + 4)):
+		for x: int in range(maxi(0, _coast_left[y] - 7), _coast_left[y]):
+			if _tile_for_cell(x, y) != TILE_DOCK:
+				continue
+			var cell := Vector2i(x, y)
+			var distance: float = (
+				Vector2(cell - Vector2i(_coast_left[harbor_y] - 4, harbor_y)).length_squared()
+			)
+			if distance < best_distance:
+				best_distance = distance
+				best_cell = cell
+	return best_cell
+
+
+func _local_destination_cell(home_block: Vector2i) -> Vector2i:
+	var candidates: Array[Vector2i] = []
+	for block: Vector2i in _city_blocks:
+		if block == home_block or _landmark_blocks.has(block):
+			continue
+		candidates.append(block)
+	if candidates.is_empty():
+		return _pick_block_sidewalk_cell(home_block)
+	var destination_block: Vector2i = candidates[_rng.randi_range(0, candidates.size() - 1)]
+	return _pick_block_sidewalk_cell(destination_block)
+
+
+func _choose_citizen_destination(home_block: Vector2i, citizen_index: int) -> Dictionary:
+	var hero_cell: Vector2i = _landmark_entrance_cell("hero_association")
+	if hero_cell.x >= 0 and citizen_index % 4 == 0:
+		return {"cell": hero_cell, "name": "Hero Association", "kind": "hero_association"}
+
+	var park_cell: Vector2i = _park_destination_cell()
+	var station_cell: Vector2i = _landmark_entrance_cell("station")
+	var civic_cell: Vector2i = _landmark_entrance_cell("civic")
+	var harbor_cell: Vector2i = _harbor_destination_cell()
+	var destination_roll: float = _rng.randf()
+	if destination_roll < 0.37 and hero_cell.x >= 0:
+		return {"cell": hero_cell, "name": "Hero Association", "kind": "hero_association"}
+	if destination_roll < 0.62 and park_cell.x >= 0:
+		return {"cell": park_cell, "name": "Riverside Park", "kind": "park"}
+	if destination_roll < 0.75 and station_cell.x >= 0:
+		return {"cell": station_cell, "name": "Harbor Station", "kind": "station"}
+	if destination_roll < 0.87 and civic_cell.x >= 0:
+		return {"cell": civic_cell, "name": "City Hall", "kind": "civic"}
+	if destination_roll < 0.94 and harbor_cell.x >= 0:
+		return {"cell": harbor_cell, "name": "Harbor Market", "kind": "harbor"}
+	return {
+		"cell": _local_destination_cell(home_block),
+		"name": "Corner Café",
+		"kind": "local",
+	}
+
+
+func _make_pedestrian_route(from_cell: Vector2i, to_cell: Vector2i) -> PackedVector2Array:
 	var route := PackedVector2Array()
-	for cell: Vector2i in cells:
+	if _pedestrian_navigation == null:
+		return route
+	if (
+		_pedestrian_navigation.is_point_solid(from_cell)
+		or _pedestrian_navigation.is_point_solid(to_cell)
+	):
+		return route
+	var cell_path: Array[Vector2i] = _pedestrian_navigation.get_id_path(from_cell, to_cell)
+	if cell_path.size() < 2:
+		return route
+	for cell: Vector2i in cell_path:
 		route.append(_cell_to_world(cell))
 	return route
+
+
+func _open_route_length(route: PackedVector2Array) -> float:
+	var total: float = 0.0
+	for index: int in range(route.size() - 1):
+		total += route[index].distance_to(route[index + 1])
+	return total
 
 
 func _build_cars() -> void:

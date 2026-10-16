@@ -40,6 +40,14 @@ func get_building_render_counts() -> Vector2i:
 	return Vector2i(atlas_count, procedural_count)
 
 
+func get_hero_association_count() -> int:
+	var count: int = 0
+	for prop: Dictionary in _props:
+		if str(prop.get("landmark_kind", "")) == "hero_association":
+			count += 1
+	return count
+
+
 func clear() -> void:
 	_props.clear()
 	queue_redraw()
@@ -281,12 +289,44 @@ func _draw_procedural_building(prop: Dictionary) -> void:
 			_draw_window(Vector2(left_x, window_y), window_color)
 			_draw_window(Vector2(right_x, window_y + 1.0), window_color.darkened(0.12))
 
+	# A few narrow balconies and ledges break up the repeated window grid.
+	if height >= 72.0 and posmod(seed_value, 3) == 0:
+		for balcony_row: int in range(1, rows, 4):
+			var balcony_y: float = center.y - height + 10.0 + float(balcony_row) * floor_gap
+			var balcony_x: float = center.x + half_width * 0.18
+			draw_rect(
+				Rect2(Vector2(balcony_x, balcony_y + 7.0), Vector2(12.0, 2.0)), wall.darkened(0.28)
+			)
+			draw_line(
+				Vector2(balcony_x, balcony_y + 5.0),
+				Vector2(balcony_x + 12.0, balcony_y + 5.0),
+				wall.lightened(0.25),
+				1.0
+			)
+			for rail: int in range(0, 13, 4):
+				draw_line(
+					Vector2(balcony_x + float(rail), balcony_y + 4.0),
+					Vector2(balcony_x + float(rail), balcony_y + 8.0),
+					Color("#23333b"),
+					1.0
+				)
+
 	var roof_points := PackedVector2Array([back + lift, right + lift, front + lift, left + lift])
 	draw_colored_polygon(roof_points, roof)
 	_draw_outline(
 		PackedVector2Array([back + lift, right + lift, front + lift, left + lift, back + lift]),
 		outline,
 		2.0
+	)
+	var rooftop_x: float = center.x - 13.0 if posmod(seed_value, 2) == 0 else center.x + 4.0
+	draw_rect(Rect2(Vector2(rooftop_x, center.y - height - 4.0), Vector2(9.0, 7.0)), outline)
+	draw_rect(
+		Rect2(Vector2(rooftop_x + 1.0, center.y - height - 3.0), Vector2(7.0, 4.0)),
+		Color("#667476")
+	)
+	draw_rect(
+		Rect2(Vector2(rooftop_x + 2.0, center.y - height - 2.0), Vector2(3.0, 1.0)),
+		Color("#aebba7")
 	)
 
 	# Storefronts and awnings break up the repeated residential facades.
@@ -312,7 +352,9 @@ func _draw_procedural_building(prop: Dictionary) -> void:
 
 	var variant: int = int(prop["variant"])
 	var landmark_kind: String = str(prop.get("landmark_kind", ""))
-	if landmark_kind == "tower" or (landmark_kind.is_empty() and variant == 1):
+	if landmark_kind == "hero_association":
+		_draw_hero_association_mark(center, height, wall, roof)
+	elif landmark_kind == "tower" or (landmark_kind.is_empty() and variant == 1):
 		draw_rect(
 			Rect2(Vector2(center.x - 3.0, center.y - height - 26.0), Vector2(6.0, 27.0)), outline
 		)
@@ -378,6 +420,69 @@ func _draw_procedural_building(prop: Dictionary) -> void:
 
 	_draw_outline(PackedVector2Array([left, front, front + lift]), outline, 2.0)
 	_draw_outline(PackedVector2Array([front, right, right + lift]), outline, 2.0)
+
+
+func _draw_hero_association_mark(center: Vector2, height: float, wall: Color, roof: Color) -> void:
+	var outline: Color = Color("#243442")
+	var badge_center := Vector2(center.x, center.y - height * 0.56)
+	var shield_points := PackedVector2Array(
+		[
+			badge_center + Vector2(-12.0, -12.0),
+			badge_center + Vector2(12.0, -12.0),
+			badge_center + Vector2(10.0, 7.0),
+			badge_center + Vector2(0.0, 15.0),
+			badge_center + Vector2(-10.0, 7.0),
+		]
+	)
+	draw_colored_polygon(shield_points, outline)
+	var inset_points := PackedVector2Array(
+		[
+			badge_center + Vector2(-9.0, -9.0),
+			badge_center + Vector2(9.0, -9.0),
+			badge_center + Vector2(7.0, 5.0),
+			badge_center + Vector2(0.0, 11.0),
+			badge_center + Vector2(-7.0, 5.0),
+		]
+	)
+	draw_colored_polygon(inset_points, Color("#3d6173"))
+	var star_points := PackedVector2Array()
+	for point: int in range(10):
+		var angle: float = -PI * 0.5 + float(point) * PI / 5.0
+		var radius: float = 7.0 if point % 2 == 0 else 3.2
+		star_points.append(badge_center + Vector2(cos(angle), sin(angle)) * radius)
+	draw_colored_polygon(star_points, Color("#f2ce72"))
+
+	var sign_rect := Rect2(Vector2(center.x - 34.0, center.y - 38.0), Vector2(68.0, 16.0))
+	draw_rect(sign_rect, outline)
+	draw_rect(sign_rect.grow(-2.0), Color("#365467"))
+	draw_string(
+		ThemeDB.fallback_font,
+		Vector2(center.x - 31.0, center.y - 26.0),
+		"HERO HQ",
+		HORIZONTAL_ALIGNMENT_CENTER,
+		62.0,
+		9,
+		Color("#f4e4b3")
+	)
+	draw_rect(Rect2(Vector2(center.x - 13.0, center.y - 20.0), Vector2(26.0, 13.0)), outline)
+	draw_rect(
+		Rect2(Vector2(center.x - 10.0, center.y - 18.0), Vector2(20.0, 11.0)), wall.lightened(0.2)
+	)
+	draw_rect(Rect2(Vector2(center.x - 2.0, center.y - 17.0), Vector2(5.0, 10.0)), roof)
+
+	var mast_top: float = center.y - height - 31.0
+	draw_rect(Rect2(Vector2(center.x - 2.0, mast_top), Vector2(4.0, 32.0)), outline)
+	draw_rect(Rect2(Vector2(center.x - 1.0, mast_top + 2.0), Vector2(2.0, 26.0)), Color("#e5d8af"))
+	draw_colored_polygon(
+		PackedVector2Array(
+			[
+				Vector2(center.x + 2.0, mast_top + 3.0),
+				Vector2(center.x + 19.0, mast_top + 8.0),
+				Vector2(center.x + 2.0, mast_top + 14.0),
+			]
+		),
+		Color("#d85e50")
+	)
 
 
 func _draw_window(position: Vector2, glass_color: Color) -> void:

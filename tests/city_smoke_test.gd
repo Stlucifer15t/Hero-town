@@ -84,6 +84,33 @@ func _run() -> void:
 			failure = "Larger walkers were not localized to the neighborhood prototype."
 
 	if failure.is_empty():
+		var association_props: Node = city.get_node_or_null("StaticProps")
+		var association_block: Vector2i = city.call("get_hero_association_block")
+		var association_visitors: int = city.call("get_hero_association_visitor_count")
+		var association_routes_found: bool = false
+		var valid_destination_routes: bool = true
+		var population_for_routes: Node = city.get_node_or_null("Population")
+		if association_props == null:
+			failure = "Generated city has no consolidated static-props renderer."
+		elif association_props.call("get_hero_association_count") != 1:
+			failure = "The city is missing its unique Hero Association headquarters."
+		elif association_block.x < 0 or association_visitors <= 0:
+			failure = "The Hero Association has no assigned citizen visitors."
+		elif population_for_routes == null:
+			failure = "Generated city has no pedestrian destination routes."
+		else:
+			for citizen: Node in population_for_routes.get_children():
+				var destination_name: String = citizen.call("get_destination_name")
+				var route_length: float = citizen.call("get_route_length")
+				var route_points: int = citizen.call("get_route_point_count")
+				if destination_name == "Hero Association":
+					association_routes_found = true
+				if route_length <= 1.0 or route_points < 2:
+					valid_destination_routes = false
+			if not association_routes_found or not valid_destination_routes:
+				failure = "Citizens are missing named, point-to-point destination routes."
+
+	if failure.is_empty():
 		var park_bounds: Rect2i = city.call("get_park_bounds")
 		var park_tile_found: bool = false
 		var road_tile_found: bool = false
@@ -94,6 +121,8 @@ func _run() -> void:
 		var park_variant_found: bool = false
 		var water_variant_found: bool = false
 		var sidewalk_variant_found: bool = false
+		var road_variant_found: bool = false
+		var park_path_variant_found: bool = false
 		var outside_variant_found: bool = false
 		for y: int in range(park_bounds.position.y, park_bounds.position.y + park_bounds.size.y):
 			for x: int in range(
@@ -115,18 +144,36 @@ func _run() -> void:
 			if tile_id == CityGenerator.TILE_DOCK:
 				dock_tile_found = true
 			var is_visual_neighborhood_cell: bool = visual_neighborhood_bounds.has_point(cell)
-			if tile_id == CityGenerator.TILE_GRASS_VARIANT:
+			if tile_id in [CityGenerator.TILE_GRASS_VARIANT, CityGenerator.TILE_GRASS_VARIANT_2]:
 				grass_variant_found = grass_variant_found or is_visual_neighborhood_cell
 				outside_variant_found = outside_variant_found or not is_visual_neighborhood_cell
-			if tile_id == CityGenerator.TILE_PARK_VARIANT:
+			if tile_id in [CityGenerator.TILE_PARK_VARIANT, CityGenerator.TILE_PARK_VARIANT_2]:
 				park_variant_found = park_variant_found or is_visual_neighborhood_cell
 				outside_variant_found = outside_variant_found or not is_visual_neighborhood_cell
-			if tile_id == CityGenerator.TILE_WATER_VARIANT:
+			if tile_id in [CityGenerator.TILE_WATER_VARIANT, CityGenerator.TILE_WATER_VARIANT_2]:
 				water_variant_found = water_variant_found or is_visual_neighborhood_cell
 				outside_variant_found = outside_variant_found or not is_visual_neighborhood_cell
-			if tile_id == CityGenerator.TILE_SIDEWALK_VARIANT:
+			if (
+				tile_id
+				in [CityGenerator.TILE_SIDEWALK_VARIANT, CityGenerator.TILE_SIDEWALK_VARIANT_2]
+			):
 				sidewalk_variant_found = sidewalk_variant_found or is_visual_neighborhood_cell
 				outside_variant_found = outside_variant_found or not is_visual_neighborhood_cell
+			if (
+				tile_id
+				in [
+					CityGenerator.TILE_ROAD_X_VARIANT,
+					CityGenerator.TILE_ROAD_Y_VARIANT,
+					CityGenerator.TILE_AVENUE_X_VARIANT,
+					CityGenerator.TILE_AVENUE_Y_VARIANT,
+					CityGenerator.TILE_INTERSECTION_VARIANT,
+					CityGenerator.TILE_AVENUE_INTERSECTION_VARIANT,
+					CityGenerator.TILE_ARTERIAL_VARIANT,
+				]
+			):
+				road_variant_found = true
+			if tile_id == CityGenerator.TILE_PARK_PATH_VARIANT:
+				park_path_variant_found = true
 		if (
 			not park_tile_found
 			or not road_tile_found
@@ -137,9 +184,11 @@ func _run() -> void:
 			or not park_variant_found
 			or not water_variant_found
 			or not sidewalk_variant_found
-			or outside_variant_found
+			or not road_variant_found
+			or not park_path_variant_found
+			or not outside_variant_found
 		):
-			failure = "Ground textures escaped the neighborhood slice or city districts are missing."
+			failure = "City-wide ground texture variations or city districts are missing."
 
 	var large_block_count: int = int(city.call("get_city_block_count")) if city != null else 0
 	var mega_dimensions := Vector2i.ZERO
@@ -174,6 +223,8 @@ func _run() -> void:
 			failure = "The smallest selectable map size is incorrect."
 		elif int(small_city.call("get_city_block_count")) <= 0:
 			failure = "The smallest selectable map generated no city blocks."
+		elif int(small_city.call("get_hero_association_visitor_count")) <= 0:
+			failure = "The smallest city has no residents heading to its Hero Association."
 
 	if not failure.is_empty():
 		push_error("City smoke test failed: " + failure)

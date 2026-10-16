@@ -14,6 +14,7 @@ var _camera: Camera2D
 var _camera_controls: Node
 var _hud: CanvasLayer
 var _size_menu: Node
+var _camera_focus_tween: Tween
 var _current_preset: int = DEFAULT_MAP_SIZE
 var _city_number: int = 0
 
@@ -34,6 +35,7 @@ func _ready() -> void:
 	_hud.name = "CityHUD"
 	_hud.call("set_city_stats", 0, 0, 0, "", Vector2i.ZERO)
 	_hud.connect("new_city_requested", Callable(self, "_on_new_city_requested"))
+	_hud.connect("hero_association_requested", Callable(self, "_on_hero_association_requested"))
 	add_child(_hud)
 
 	_open_city_size_menu(false)
@@ -41,6 +43,29 @@ func _ready() -> void:
 
 func _on_new_city_requested() -> void:
 	_open_city_size_menu(true)
+
+
+func _on_hero_association_requested() -> void:
+	if _city == null or not is_instance_valid(_city):
+		return
+	if _camera_focus_tween != null and _camera_focus_tween.is_running():
+		_camera_focus_tween.kill()
+	var focus_position: Vector2 = _city.call("get_hero_association_position")
+	_camera_focus_tween = create_tween()
+	_camera_focus_tween.set_parallel(true)
+	(
+		_camera_focus_tween
+		. tween_property(_camera, "position", focus_position, 0.65)
+		. set_trans(Tween.TRANS_SINE)
+		. set_ease(Tween.EASE_IN_OUT)
+	)
+	var target_zoom: float = maxf(_camera.zoom.x, 0.76)
+	(
+		_camera_focus_tween
+		. tween_property(_camera, "zoom", Vector2(target_zoom, target_zoom), 0.65)
+		. set_trans(Tween.TRANS_SINE)
+		. set_ease(Tween.EASE_IN_OUT)
+	)
 
 
 func _open_city_size_menu(can_cancel: bool) -> void:
@@ -64,6 +89,8 @@ func _on_city_menu_cancelled() -> void:
 
 
 func _start_new_city(preset_index: int) -> void:
+	if _camera_focus_tween != null and _camera_focus_tween.is_running():
+		_camera_focus_tween.kill()
 	_current_preset = clampi(preset_index, 0, STARTING_ZOOMS.size() - 1)
 	_city_number += 1
 	if _city != null and is_instance_valid(_city):
@@ -81,5 +108,6 @@ func _start_new_city(preset_index: int) -> void:
 		_city.call("get_car_count"),
 		_city.call("get_city_block_count"),
 		_city.call("get_map_size_name"),
-		_city.call("get_map_block_dimensions")
+		_city.call("get_map_block_dimensions"),
+		_city.call("get_hero_association_visitor_count")
 	)

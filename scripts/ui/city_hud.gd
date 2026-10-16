@@ -1,12 +1,15 @@
 extends CanvasLayer
 
 signal new_city_requested
+signal hero_association_requested
 
-## Compact mobile-safe city HUD with a persistent New City entry point.
+## Compact mobile-safe city HUD with navigation to the Hero Association.
 var _stats_label: Label
+var _hero_association_label: Label
 var _citizen_count: int = 0
 var _car_count: int = 0
 var _block_count: int = 0
+var _hero_association_visitors: int = 0
 var _size_name: String = ""
 var _size_dimensions: Vector2i = Vector2i.ZERO
 
@@ -30,21 +33,25 @@ func set_city_stats(
 	car_count: int,
 	block_count: int,
 	size_name: String,
-	size_dimensions: Vector2i
+	size_dimensions: Vector2i,
+	hero_association_visitors: int = 0
 ) -> void:
 	_citizen_count = citizen_count
 	_car_count = car_count
 	_block_count = block_count
+	_hero_association_visitors = hero_association_visitors
 	_size_name = size_name
 	_size_dimensions = size_dimensions
 	if _stats_label != null:
 		_stats_label.text = _stats_text()
+	if _hero_association_label != null:
+		_hero_association_label.text = _hero_association_text()
 
 
 func _add_title_panel(root: Control) -> void:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(24.0, 22.0)
-	panel.custom_minimum_size = Vector2(292.0, 88.0)
+	panel.custom_minimum_size = Vector2(300.0, 106.0)
 	panel.add_theme_stylebox_override(
 		"panel", _make_panel_style(Color("#10202be8"), Color("#82c9bd55"))
 	)
@@ -61,27 +68,43 @@ func _add_title_panel(root: Control) -> void:
 	column.add_child(title)
 
 	var subtitle := Label.new()
-	subtitle.text = "A living TheoTown-inspired island city"
+	subtitle.text = "Island city · Hero Association HQ"
 	subtitle.add_theme_font_size_override("font_size", 13)
 	subtitle.add_theme_color_override("font_color", Color("#91b5b5"))
 	column.add_child(subtitle)
+
+	_hero_association_label = Label.new()
+	_hero_association_label.add_theme_font_size_override("font_size", 11)
+	_hero_association_label.add_theme_color_override("font_color", Color("#e9ca7d"))
+	_hero_association_label.text = _hero_association_text()
+	column.add_child(_hero_association_label)
 
 
 func _add_top_right_controls(root: Control) -> void:
 	var controls := HBoxContainer.new()
 	controls.anchor_left = 1.0
 	controls.anchor_right = 1.0
-	controls.offset_left = -376.0
+	controls.offset_left = -396.0
 	controls.offset_right = -24.0
 	controls.offset_top = 24.0
 	controls.offset_bottom = 74.0
-	controls.add_theme_constant_override("separation", 10)
+	controls.add_theme_constant_override("separation", 8)
 	controls.alignment = BoxContainer.ALIGNMENT_END
 	root.add_child(controls)
 
+	var hero_hq_button := Button.new()
+	hero_hq_button.text = "HERO HQ"
+	hero_hq_button.custom_minimum_size = Vector2(108.0, 48.0)
+	hero_hq_button.add_theme_stylebox_override("normal", _make_button_style(true))
+	hero_hq_button.add_theme_stylebox_override("hover", _make_button_style(true))
+	hero_hq_button.add_theme_color_override("font_color", Color("#f4e5b4"))
+	hero_hq_button.add_theme_font_size_override("font_size", 13)
+	hero_hq_button.pressed.connect(_on_hero_association_pressed)
+	controls.add_child(hero_hq_button)
+
 	var new_city_button := Button.new()
 	new_city_button.text = "NEW CITY"
-	new_city_button.custom_minimum_size = Vector2(142.0, 48.0)
+	new_city_button.custom_minimum_size = Vector2(114.0, 48.0)
 	new_city_button.add_theme_stylebox_override("normal", _make_button_style(false))
 	new_city_button.add_theme_stylebox_override("hover", _make_button_style(true))
 	new_city_button.add_theme_color_override("font_color", Color("#f4f3dc"))
@@ -90,7 +113,7 @@ func _add_top_right_controls(root: Control) -> void:
 	controls.add_child(new_city_button)
 
 	var badge := PanelContainer.new()
-	badge.custom_minimum_size = Vector2(172.0, 48.0)
+	badge.custom_minimum_size = Vector2(126.0, 48.0)
 	badge.add_theme_stylebox_override(
 		"panel", _make_panel_style(Color("#10202be8"), Color("#77d7ab66"))
 	)
@@ -152,6 +175,16 @@ func _add_stats_panel(root: Control) -> void:
 
 func _on_new_city_pressed() -> void:
 	new_city_requested.emit()
+
+
+func _on_hero_association_pressed() -> void:
+	hero_association_requested.emit()
+
+
+func _hero_association_text() -> String:
+	if _size_name.is_empty():
+		return "HERO ASSOCIATION · CONSTRUCTION PENDING"
+	return "HERO ASSOCIATION · %d DAILY VISITORS" % _hero_association_visitors
 
 
 func _stats_text() -> String:

@@ -89,7 +89,17 @@ jobs:
         run: "$GODOT_BIN --headless --path . --script res://tests/city_smoke_test.gd"
 
       - name: Run hero powers smoke test
-        run: "$GODOT_BIN --headless --path . --script res://tests/hero_smoke_test.gd"
+        run: |
+          set +e
+          "$GODOT_BIN" --headless --path . --script res://tests/hero_smoke_test.gd > /tmp/hero-smoke.log 2>&1
+          test_status=$?
+          cat /tmp/hero-smoke.log
+          if [ "$test_status" -ne 0 ]; then
+            while IFS= read -r line; do
+              echo "::error title=Hero powers smoke test::$line"
+            done < <(tail -n 12 /tmp/hero-smoke.log)
+          fi
+          exit "$test_status"
 
       - name: Export debug APK
         run: |

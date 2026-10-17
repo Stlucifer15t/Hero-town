@@ -675,7 +675,7 @@ func _make_texture_material(
 	material.albedo_texture = texture
 	material.albedo_color = tint
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	material.texture_repeat = BaseMaterial3D.TEXTURE_REPEAT_ENABLED
+	material.texture_repeat = true
 	material.uv1_scale = uv_scale
 	material.roughness = roughness_value
 	if unshaded:

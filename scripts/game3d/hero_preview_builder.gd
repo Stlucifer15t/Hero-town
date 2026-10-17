@@ -64,7 +64,7 @@ static func add_preview(
 	floor_material.albedo_texture = GRASS_TEXTURE
 	floor_material.albedo_color = Color("#c4d7ba")
 	floor_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	floor_material.texture_repeat = BaseMaterial3D.TEXTURE_REPEAT_ENABLED
+	floor_material.texture_repeat = true
 	floor_material.uv1_scale = Vector3(3.0, 3.0, 1.0)
 	floor_material.roughness = 1.0
 	floor.material_override = floor_material

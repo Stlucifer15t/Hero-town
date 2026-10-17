@@ -2,6 +2,23 @@ extends SceneTree
 
 const HeroPowerCatalog = preload("res://scripts/hero/hero_power_catalog.gd")
 const HeroTown3DScene = preload("res://scenes/hero_town_3d.tscn")
+const PIXEL_TEXTURE_PATHS: Array[String] = [
+	"res://assets/pixel/grass_meadow.png",
+	"res://assets/pixel/grass_wildflower.png",
+	"res://assets/pixel/stone_path.png",
+	"res://assets/pixel/promenade.png",
+	"res://assets/pixel/curb_stone.png",
+	"res://assets/pixel/park_water.png",
+	"res://assets/pixel/tree_canopy.png",
+	"res://assets/pixel/wood_pixel.png",
+	"res://assets/pixel/suit_weave.png",
+	"res://assets/pixel/cape_weave.png",
+	"res://assets/pixel/hero_town_crest.png",
+	"res://assets/pixel/facade_terracotta.png",
+	"res://assets/pixel/facade_limestone.png",
+	"res://assets/pixel/facade_glass.png",
+	"res://assets/pixel/facade_slate.png",
+]
 
 
 func _initialize() -> void:
@@ -14,6 +31,11 @@ func _run() -> void:
 	root.add_child(game)
 	await process_frame
 	await physics_frame
+
+	for texture_path: String in PIXEL_TEXTURE_PATHS:
+		if ResourceLoader.load(texture_path) == null:
+			failure = "Pixel-art texture failed to import: %s" % texture_path
+			break
 
 	var park: Node3D = game.get_node_or_null("HeroTownPark") as Node3D
 	var hero: CharacterBody3D = game.get_node_or_null("PlayerHero") as CharacterBody3D
@@ -38,6 +60,32 @@ func _run() -> void:
 		>= int(ProjectSettings.get_setting("display/window/size/viewport_height"))
 	):
 		failure = "The active game viewport is not portrait-first."
+
+	if failure.is_empty():
+		var textured_node_paths: Array[String] = [
+			"ParkLawn",
+			"MainParkWalk",
+			"FarPromenade",
+			"ParkWater",
+			"HeroAssociationSkyline/AssociationCrest",
+		]
+		for node_path: String in textured_node_paths:
+			if not _has_pixel_material(park.get_node_or_null(node_path)):
+				failure = "The 3D park is missing its nearest-filter pixel texture: %s" % node_path
+				break
+
+	if failure.is_empty():
+		var hero_suit: Node = hero.find_child("Suit", true, false)
+		var hero_cape: Node = hero.find_child("Cape", true, false)
+		var menu_crest: TextureRect = game.find_child("StartMenuCrest", true, false) as TextureRect
+		if not _has_pixel_material(hero_suit):
+			failure = "The hero suit is missing its pixel fabric texture."
+		elif not _has_pixel_material(hero_cape):
+			failure = "The hero cape is missing its pixel weave texture."
+		elif menu_crest == null or menu_crest.texture == null:
+			failure = "The title screen is missing its pixel-art Hero Association crest."
+		elif menu_crest.texture_filter != CanvasItem.TEXTURE_FILTER_NEAREST:
+			failure = "The title-screen crest is not using nearest-neighbor filtering."
 
 	if failure.is_empty():
 		game.call("_show_creator")
@@ -219,3 +267,15 @@ func _run() -> void:
 		"3D park smoke test passed: portrait intro, character creation, six powers, and training effects."
 	)
 	quit(0)
+
+
+func _has_pixel_material(candidate: Node) -> bool:
+	if not candidate is MeshInstance3D:
+		return false
+	var mesh_instance: MeshInstance3D = candidate as MeshInstance3D
+	var material: StandardMaterial3D = mesh_instance.material_override as StandardMaterial3D
+	return (
+		material != null
+		and material.albedo_texture != null
+		and material.texture_filter == BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	)

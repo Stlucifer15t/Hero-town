@@ -1,6 +1,9 @@
 extends CharacterBody3D
 
 const HeroPowerCatalog = preload("res://scripts/hero/hero_power_catalog.gd")
+const SUIT_WEAVE_TEXTURE: Texture2D = preload("res://assets/pixel/suit_weave.png")
+const CAPE_WEAVE_TEXTURE: Texture2D = preload("res://assets/pixel/cape_weave.png")
+const HERO_CREST_TEXTURE: Texture2D = preload("res://assets/pixel/hero_town_crest.png")
 
 const WALK_SPEED: float = 4.6
 const SPRINT_MULTIPLIER: float = 1.9
@@ -518,11 +521,14 @@ func _build_model() -> void:
 	_visual_root = Node3D.new()
 	_visual_root.name = "HeroModel"
 	add_child(_visual_root)
-	_torso_material = _make_material(_suit_color, 0.78)
-	_cape_material = _make_material(_cape_color, 0.84)
+	_torso_material = _make_texture_material(
+		SUIT_WEAVE_TEXTURE, _suit_color, 0.78, Vector3(1.8, 1.8, 1.0)
+	)
+	_cape_material = _make_texture_material(
+		CAPE_WEAVE_TEXTURE, _cape_color, 0.84, Vector3(1.5, 1.5, 1.0)
+	)
 	var dark_material := _make_material("#263740", 0.88)
 	var skin_material := _make_material("#d6a47d", 0.9)
-	var accent_material := _make_material("#f1d277", 0.65, true)
 
 	var cape := MeshInstance3D.new()
 	cape.name = "Cape"
@@ -592,14 +598,17 @@ func _build_model() -> void:
 
 	var emblem := MeshInstance3D.new()
 	emblem.name = "HeroEmblem"
-	var emblem_mesh := SphereMesh.new()
-	emblem_mesh.radius = 0.115
-	emblem_mesh.height = 0.23
-	emblem_mesh.radial_segments = 6
-	emblem_mesh.rings = 3
+	var emblem_mesh := QuadMesh.new()
+	emblem_mesh.size = Vector2(0.3, 0.34)
 	emblem.mesh = emblem_mesh
-	emblem.position = Vector3(0.0, 1.45, -0.325)
-	emblem.material_override = accent_material
+	emblem.position = Vector3(0.0, 1.45, -0.39)
+	emblem.rotation.y = PI
+	var emblem_material := _make_texture_material(
+		HERO_CREST_TEXTURE, Color.WHITE, 0.72, Vector3.ONE, true
+	)
+	emblem_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	emblem_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	emblem.material_override = emblem_material
 	_visual_root.add_child(emblem)
 
 	var aura_ring := MeshInstance3D.new()
@@ -652,6 +661,25 @@ func _make_material(
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		material.emission_enabled = true
 		material.emission = material.albedo_color
+	return material
+
+
+func _make_texture_material(
+	texture: Texture2D,
+	tint: Color,
+	roughness_value: float,
+	uv_scale: Vector3 = Vector3.ONE,
+	unshaded: bool = false
+) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = texture
+	material.albedo_color = tint
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	material.texture_repeat = BaseMaterial3D.TEXTURE_REPEAT_ENABLED
+	material.uv1_scale = uv_scale
+	material.roughness = roughness_value
+	if unshaded:
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return material
 
 

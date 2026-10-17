@@ -2,6 +2,23 @@ extends Node3D
 
 const HeroTrainingTarget3D = preload("res://scripts/game3d/hero_training_target_3d.gd")
 
+const GRASS_MEADOW_TEXTURE: Texture2D = preload("res://assets/pixel/grass_meadow.png")
+const GRASS_WILDFLOWER_TEXTURE: Texture2D = preload("res://assets/pixel/grass_wildflower.png")
+const STONE_PATH_TEXTURE: Texture2D = preload("res://assets/pixel/stone_path.png")
+const PROMENADE_TEXTURE: Texture2D = preload("res://assets/pixel/promenade.png")
+const CURB_STONE_TEXTURE: Texture2D = preload("res://assets/pixel/curb_stone.png")
+const WATER_TEXTURE: Texture2D = preload("res://assets/pixel/park_water.png")
+const TREE_CANOPY_TEXTURE: Texture2D = preload("res://assets/pixel/tree_canopy.png")
+const WOOD_PIXEL_TEXTURE: Texture2D = preload("res://assets/pixel/wood_pixel.png")
+const SUIT_WEAVE_TEXTURE: Texture2D = preload("res://assets/pixel/suit_weave.png")
+const HERO_CREST_TEXTURE: Texture2D = preload("res://assets/pixel/hero_town_crest.png")
+const BUILDING_FACADE_TEXTURES: Array[Texture2D] = [
+	preload("res://assets/pixel/facade_terracotta.png"),
+	preload("res://assets/pixel/facade_limestone.png"),
+	preload("res://assets/pixel/facade_glass.png"),
+	preload("res://assets/pixel/facade_slate.png"),
+]
+
 const PARK_HALF_WIDTH: float = 52.0
 const PARK_HALF_DEPTH: float = 74.0
 
@@ -91,7 +108,9 @@ func _build_ground() -> void:
 	plane.size = Vector2(PARK_HALF_WIDTH * 2.0, PARK_HALF_DEPTH * 2.0)
 	ground.mesh = plane
 	ground.position = Vector3(0.0, -0.12, -2.0)
-	ground.material_override = _make_material("#4f873e", 1.0)
+	ground.material_override = _make_texture_material(
+		GRASS_WILDFLOWER_TEXTURE, Color("#d9ebbd"), 1.0, Vector3(10.0, 14.0, 1.0)
+	)
 	add_child(ground)
 
 	var ground_body := StaticBody3D.new()
@@ -110,7 +129,9 @@ func _build_ground() -> void:
 	horizon_plane.size = Vector2(500.0, 500.0)
 	far_lawn.mesh = horizon_plane
 	far_lawn.position = Vector3(0.0, -0.28, -170.0)
-	far_lawn.material_override = _make_material("#627f57", 1.0)
+	far_lawn.material_override = _make_texture_material(
+		GRASS_MEADOW_TEXTURE, Color("#9bb38f"), 1.0, Vector3(48.0, 48.0, 1.0)
+	)
 	add_child(far_lawn)
 
 
@@ -120,29 +141,40 @@ func _build_paths() -> void:
 		"MainParkWalk",
 		Vector3(4.0, 0.12, 118.0),
 		Vector3(0.0, -0.015, -12.0),
-		_make_material("#b7ad8f", 1.0)
+		_make_texture_material(STONE_PATH_TEXTURE, Color.WHITE, 0.96, Vector3(2.0, 59.0, 1.0))
 	)
 	_add_box(
 		self,
 		"CrossParkWalk",
 		Vector3(94.0, 0.12, 3.0),
 		Vector3(0.0, -0.008, -24.0),
-		_make_material("#c4b795", 1.0)
+		_make_texture_material(PROMENADE_TEXTURE, Color.WHITE, 0.96, Vector3(47.0, 1.5, 1.0))
 	)
 	_add_box(
 		self,
 		"FarPromenade",
 		Vector3(106.0, 0.18, 5.0),
 		Vector3(0.0, 0.02, -46.0),
-		_make_material("#989b91", 1.0)
+		_make_texture_material(PROMENADE_TEXTURE, Color("#e5e7db"), 0.94, Vector3(26.5, 1.25, 1.0))
 	)
 	_add_box(
 		self,
 		"WaterfrontCurb",
 		Vector3(108.0, 0.28, 0.55),
 		Vector3(0.0, 0.12, -49.0),
-		_make_material("#e5d8b9", 1.0)
+		_make_texture_material(CURB_STONE_TEXTURE, Color.WHITE, 0.92, Vector3(54.0, 1.0, 1.0))
 	)
+
+	var water := MeshInstance3D.new()
+	water.name = "ParkWater"
+	var water_mesh := PlaneMesh.new()
+	water_mesh.size = Vector2(108.0, 14.0)
+	water.mesh = water_mesh
+	water.position = Vector3(0.0, -0.045, -59.5)
+	water.material_override = _make_texture_material(
+		WATER_TEXTURE, Color("#c4ded0"), 0.42, Vector3(27.0, 3.5, 1.0)
+	)
+	add_child(water)
 
 
 func _build_grass() -> void:
@@ -273,7 +305,9 @@ func _add_tree(tree_position: Vector3, tree_scale: float, leaf_color: Color) -> 
 	var trunk := MeshInstance3D.new()
 	trunk.mesh = trunk_mesh
 	trunk.position.y = 1.2
-	trunk.material_override = _make_material("#806043", 1.0)
+	trunk.material_override = _make_texture_material(
+		WOOD_PIXEL_TEXTURE, Color("#b9946b"), 0.98, Vector3(2.0, 2.0, 1.0)
+	)
 	tree.add_child(trunk)
 	var trunk_body := StaticBody3D.new()
 	trunk_body.name = "TreeTrunkCollision"
@@ -299,19 +333,17 @@ func _add_tree(tree_position: Vector3, tree_scale: float, leaf_color: Color) -> 
 			0.12 if cluster_index == 2 else 0.0
 		)
 		cluster.scale = Vector3(0.75, 0.7, 0.75) if cluster_index != 1 else Vector3(0.8, 0.85, 0.8)
-		cluster.material_override = _make_material(
-			leaf_color.lightened(float(cluster_index) * 0.025), 1.0
+		cluster.material_override = _make_texture_material(
+			TREE_CANOPY_TEXTURE,
+			leaf_color.lightened(float(cluster_index) * 0.025),
+			1.0,
+			Vector3(1.6, 1.6, 1.0)
 		)
 		tree.add_child(cluster)
 
 
 func _build_skyline() -> void:
-	var window_textures: Array[Texture2D] = [
-		_make_building_texture(Color("#92959a"), Color("#91bad2"), Color("#d5bc91")),
-		_make_building_texture(Color("#b87d5c"), Color("#9dc5d2"), Color("#e6c28a")),
-		_make_building_texture(Color("#686f78"), Color("#8fb5c9"), Color("#d5d0be")),
-		_make_building_texture(Color("#9b8a70"), Color("#9bc2ce"), Color("#ead3a1")),
-	]
+	var window_textures: Array[Texture2D] = BUILDING_FACADE_TEXTURES
 	for index: int in range(33):
 		var lane: int = index % 2
 		var x: float = -59.0 + float(index) * 3.7 + _rng.randf_range(-1.2, 1.2)
@@ -327,10 +359,13 @@ func _build_skyline() -> void:
 		box.size = Vector3(width, height, depth)
 		building.mesh = box
 		building.position = Vector3(x, height * 0.5 - 0.12, z)
-		var facade := StandardMaterial3D.new()
-		facade.albedo_texture = window_textures[index % window_textures.size()]
-		facade.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		facade.roughness = 0.96
+		var facade_texture: Texture2D = window_textures[index % window_textures.size()]
+		var facade := _make_texture_material(
+			facade_texture,
+			Color.WHITE,
+			0.96,
+			Vector3(maxf(width / 6.0, 1.0), maxf(height / 7.0, 1.0), 1.0)
+		)
 		building.material_override = facade
 		add_child(building)
 
@@ -339,7 +374,9 @@ func _build_skyline() -> void:
 		roof_mesh.size = Vector3(width + 0.18, 0.24, depth + 0.18)
 		roof.mesh = roof_mesh
 		roof.position = building.position + Vector3(0.0, height * 0.5, 0.0)
-		roof.material_override = _make_material("#7c7770", 1.0)
+		roof.material_override = _make_texture_material(
+			CURB_STONE_TEXTURE, Color("#a7a69b"), 0.96, Vector3(width / 3.0, depth / 3.0, 1.0)
+		)
 		add_child(roof)
 		if index % 5 == 0:
 			_add_box(
@@ -353,20 +390,6 @@ func _build_skyline() -> void:
 	_add_hero_hq_landmark()
 
 
-func _make_building_texture(base_color: Color, window_color: Color, lit_color: Color) -> Texture2D:
-	var image := Image.create(64, 64, false, Image.FORMAT_RGBA8)
-	image.fill(base_color)
-	for row: int in range(3, 62, 8):
-		for column: int in range(3, 62, 8):
-			var is_lit: bool = (column * 3 + row * 5) % 7 == 0
-			var color: Color = lit_color if is_lit else window_color
-			for y: int in range(row, mini(row + 5, 64)):
-				for x: int in range(column, mini(column + 4, 64)):
-					image.set_pixel(x, y, color)
-			image.set_pixel(column, row + 5, base_color.darkened(0.16))
-	return ImageTexture.create_from_image(image)
-
-
 func _add_hero_hq_landmark() -> void:
 	var hq := Node3D.new()
 	hq.name = "HeroAssociationSkyline"
@@ -377,29 +400,47 @@ func _add_hero_hq_landmark() -> void:
 		"HQBase",
 		Vector3(11.0, 15.0, 8.0),
 		Vector3(0.0, 7.5, 0.0),
-		_make_material("#c5bca3", 0.95)
+		_make_texture_material(
+			BUILDING_FACADE_TEXTURES[1], Color("#f0e4c7"), 0.93, Vector3(2.0, 2.5, 1.0)
+		)
 	)
 	_add_box(
 		hq,
 		"HQGlassTower",
 		Vector3(5.5, 22.0, 5.4),
 		Vector3(0.2, 18.5, 0.0),
-		_make_material("#668b95", 0.62)
+		_make_texture_material(
+			BUILDING_FACADE_TEXTURES[2], Color("#b5d3d4"), 0.62, Vector3(1.4, 3.1, 1.0)
+		)
 	)
 	_add_box(
 		hq,
 		"HQRoof",
 		Vector3(12.0, 0.55, 9.0),
 		Vector3(0.0, 7.8, 0.0),
-		_make_material("#d6cba9", 0.9)
+		_make_texture_material(CURB_STONE_TEXTURE, Color("#e2d7ba"), 0.9, Vector3(3.0, 2.25, 1.0))
 	)
+	var crest := MeshInstance3D.new()
+	crest.name = "AssociationCrest"
+	var crest_mesh := QuadMesh.new()
+	crest_mesh.size = Vector2(1.7, 1.7)
+	crest.mesh = crest_mesh
+	crest.position = Vector3(0.0, 11.4, 4.08)
+	var crest_material := _make_texture_material(
+		HERO_CREST_TEXTURE, Color.WHITE, 1.0, Vector3.ONE, true
+	)
+	crest_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	crest_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	crest.material_override = crest_material
+	hq.add_child(crest)
+
 	var sign := Label3D.new()
 	sign.name = "HeroAssociationSign"
 	sign.text = "HERO\nASSOCIATION"
 	sign.font_size = 48
 	sign.pixel_size = 0.012
 	sign.modulate = Color("#f4df9b")
-	sign.position = Vector3(0.0, 12.5, 4.1)
+	sign.position = Vector3(0.0, 13.0, 4.1)
 	sign.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	hq.add_child(sign)
 
@@ -416,14 +457,18 @@ func _build_park_furniture() -> void:
 			"BenchSeat",
 			Vector3(2.0, 0.18, 0.62),
 			Vector3(0.0, 0.6, 0.0),
-			_make_material("#93623f", 0.92)
+			_make_texture_material(
+				WOOD_PIXEL_TEXTURE, Color("#bb936b"), 0.92, Vector3(2.0, 1.0, 1.0)
+			)
 		)
 		_add_box(
 			bench,
 			"BenchBack",
 			Vector3(2.0, 0.82, 0.16),
 			Vector3(0.0, 1.02, -0.25),
-			_make_material("#a97149", 0.92)
+			_make_texture_material(
+				WOOD_PIXEL_TEXTURE, Color("#c59a68"), 0.92, Vector3(2.0, 1.0, 1.0)
+			)
 		)
 		for leg_x: float in [-0.72, 0.72]:
 			_add_box(
@@ -499,7 +544,9 @@ func _build_citizens() -> void:
 		var torso := MeshInstance3D.new()
 		torso.mesh = torso_mesh
 		torso.position = Vector3(0.0, 1.05, 0.0)
-		torso.material_override = _make_material(outfits[index % outfits.size()], 0.96)
+		torso.material_override = _make_texture_material(
+			SUIT_WEAVE_TEXTURE, outfits[index % outfits.size()], 0.96, Vector3(1.2, 1.5, 1.0)
+		)
 		walker.add_child(torso)
 		var head_mesh := SphereMesh.new()
 		head_mesh.radius = 0.19
@@ -571,4 +618,23 @@ func _make_material(
 		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		material.emission_enabled = true
 		material.emission = material.albedo_color
+	return material
+
+
+func _make_texture_material(
+	texture: Texture2D,
+	tint: Color = Color.WHITE,
+	roughness_value: float = 1.0,
+	uv_scale: Vector3 = Vector3.ONE,
+	unshaded: bool = false
+) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = texture
+	material.albedo_color = tint
+	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	material.texture_repeat = BaseMaterial3D.TEXTURE_REPEAT_ENABLED
+	material.uv1_scale = uv_scale
+	material.roughness = roughness_value
+	if unshaded:
+		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return material

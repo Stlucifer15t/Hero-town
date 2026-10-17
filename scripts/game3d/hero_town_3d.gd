@@ -5,6 +5,7 @@ const ParkWorld3D = preload("res://scripts/game3d/park_world_3d.gd")
 const HeroPlayer3D = preload("res://scripts/game3d/hero_player_3d.gd")
 const HeroPreviewBuilder = preload("res://scripts/game3d/hero_preview_builder.gd")
 const VirtualJoystick3D = preload("res://scripts/game3d/virtual_joystick_3d.gd")
+const HERO_CREST_TEXTURE: Texture2D = preload("res://assets/pixel/hero_town_crest.png")
 
 const SHORT_POWER_NAMES: Dictionary = {
 	"elemental": "BOLT",
@@ -218,17 +219,33 @@ func _build_title_overlay() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 7)
 	margin.add_child(column)
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 13)
+	column.add_child(title_row)
+	var crest := TextureRect.new()
+	crest.name = "StartMenuCrest"
+	crest.texture = HERO_CREST_TEXTURE
+	crest.custom_minimum_size = Vector2(58.0, 58.0)
+	crest.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	crest.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	crest.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_row.add_child(crest)
+	var intro_copy := VBoxContainer.new()
+	intro_copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	intro_copy.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	intro_copy.add_theme_constant_override("separation", 2)
+	title_row.add_child(intro_copy)
 	var title := Label.new()
 	title.text = "HERO TOWN"
 	title.add_theme_font_size_override("font_size", 36)
 	title.add_theme_color_override("font_color", Color("#f5f1dd"))
-	column.add_child(title)
+	intro_copy.add_child(title)
 	var copy := Label.new()
 	copy.text = "A living city. A new hero. Your story starts here."
 	copy.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_theme_font_size_override("font_size", 14)
 	copy.add_theme_color_override("font_color", Color("#c0d2ca"))
-	column.add_child(copy)
+	intro_copy.add_child(copy)
 	var create_hero_button := _make_button("CREATE YOUR HERO", Vector2(0.0, 58.0), true)
 	create_hero_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	create_hero_button.pressed.connect(_show_creator)

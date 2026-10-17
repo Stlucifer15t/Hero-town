@@ -13,7 +13,7 @@ The Android export and viewport are set to portrait. The active scene uses the G
 
 ## Current 3D slice
 
-The startup scene is a playable proof of the new visual direction: a ground-level third-person camera, warm afternoon sky, low-poly park trees and furniture, a textured distant skyline, instanced foreground grass and flowers, strolling park visitors, Hero Association skyline landmark, and a restrained location intro. The player hero is assembled from original low-poly shapes, with suit/cape colors and a compact, game-styled creator.
+The startup scene is a playable proof of the new visual direction: a ground-level third-person camera, warm afternoon sky, low-poly park trees and furniture, a textured distant skyline, instanced foreground grass and flowers, strolling park visitors, a Hero Association landmark, and a restrained location intro. It now uses 15 original pixel-art materials for the meadow, paving, waterfront, facades, trees, furniture, hero fabric, and title-screen crest. The textures are 128 × 128 nearest-filter PNGs (about 18 KB compressed in total, under 1 MB decoded), so they add detail without a large mobile memory cost. The player hero is assembled from original low-poly shapes, with suit/cape colors and a compact, game-styled creator. See `assets/pixel/ART_ASSETS.md` and `tools/generate_pixel_art_assets.py` for the pack and its reproducible source.
 
 The park has a small training range with three damageable targets. All six selectable powers have 3D effects:
 

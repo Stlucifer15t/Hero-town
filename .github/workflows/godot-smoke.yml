@@ -101,6 +101,19 @@ jobs:
           fi
           exit "$test_status"
 
+      - name: Run portrait 3D park smoke test
+        run: |
+          set +e
+          "$GODOT_BIN" --headless --path . --script res://tests/hero_town_3d_smoke_test.gd > /tmp/park-3d-smoke.log 2>&1
+          test_status=$?
+          cat /tmp/park-3d-smoke.log
+          if [ "$test_status" -ne 0 ]; then
+            while IFS= read -r line; do
+              echo "::error title=Portrait 3D park smoke test::$line"
+            done < <(tail -n 12 /tmp/park-3d-smoke.log)
+          fi
+          exit "$test_status"
+
       - name: Export debug APK
         run: |
           mkdir -p build/android
